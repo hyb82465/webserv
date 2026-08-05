@@ -28,10 +28,14 @@ void Server::run()
         std::cerr << "socket failed" << std::endl;
         return ;
     }
-    std::cout << "socket created, fd = "
-          << _listenFd
-          << std::endl;
+    else
+    {
+        std::cout << "socket created, fd = "
+                  << _listenFd
+                  << std::endl;
 
+    }
+    
     // bind
     /* int bind(int socketFd,
                 const struct sockaddr *address,
@@ -50,7 +54,10 @@ void Server::run()
         std::cerr << "bind failed" << std::endl;
         return ;
     }
-    std::cout << "socket bound to port 8080" << std::endl;
+    else
+    {
+        std::cout << "socket bound to port 8080" << std::endl;
+    }
 
     // listen
     // int listen(int socketFd, int backlog);
@@ -59,7 +66,10 @@ void Server::run()
         std::cerr << "listen failed" << std::endl;
         return ;
     }
-    std::cout << "server is listening on port 8080" << std::endl;
+    else
+    {
+        std::cout << "server is listening on port 8080" << std::endl;
+    }
 
     // accept
     /* int accept(int socketFd,
@@ -78,8 +88,11 @@ void Server::run()
         std::cerr << "accept failed" << std::endl;
         return ;
     }
-    std::cout << "client connected, fd = " << clientFd << std::endl;
-
+    else
+    {
+        std::cout << "client connected, fd = " << clientFd << std::endl;
+    }
+    
     // recv
     /* ssize_t recv(int socketFd,
                     void *buffer,
@@ -96,7 +109,6 @@ void Server::run()
     if (byteRead == -1)
     {
         std::cerr << "recv failed" << std::endl;
-        return ;
     }
     else if (byteRead == 0)
     {
@@ -109,5 +121,32 @@ void Server::run()
         std::cout << buffer << std::endl;
     }
 
+    // send
+    /* ssize_t send(int socketFd,
+                    const void *buffer,
+                    size_t length,
+                    int flags); */
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Length: 12\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Hello World!";
+
+    ssize_t bytesSent = send(
+        clientFd,
+        response.c_str(),
+        response.size(),
+        0
+    );
+    if (bytesSent == -1)
+    {
+        std::cerr << "send failed" << std::endl;
+    }
+    else
+    {
+        std::cout << "sent " << bytesSent << " bytes" << std::endl;
+    }
     close(clientFd);
 }

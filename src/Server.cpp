@@ -28,13 +28,7 @@ void Server::run()
         std::cerr << "socket failed" << std::endl;
         return ;
     }
-    else
-    {
-        std::cout << "socket created, fd = "
-                  << _listenFd
-                  << std::endl;
-
-    }
+    std::cout << "socket created, fd = " << _listenFd << std::endl;
     
     // bind
     /* int bind(int socketFd,
@@ -54,10 +48,7 @@ void Server::run()
         std::cerr << "bind failed" << std::endl;
         return ;
     }
-    else
-    {
-        std::cout << "socket bound to port 8080" << std::endl;
-    }
+    std::cout << "socket bound to port 8080" << std::endl;
 
     // listen
     // int listen(int socketFd, int backlog);
@@ -66,10 +57,7 @@ void Server::run()
         std::cerr << "listen failed" << std::endl;
         return ;
     }
-    else
-    {
-        std::cout << "server is listening on port 8080" << std::endl;
-    }
+    std::cout << "server is listening on port 8080" << std::endl;
 
     // accept
     /* int accept(int socketFd,
@@ -88,10 +76,7 @@ void Server::run()
         std::cerr << "accept failed" << std::endl;
         return ;
     }
-    else
-    {
-        std::cout << "client connected, fd = " << clientFd << std::endl;
-    }
+    std::cout << "client connected, fd = " << clientFd << std::endl;
     
     // recv
     /* ssize_t recv(int socketFd,
@@ -109,17 +94,18 @@ void Server::run()
     if (byteRead == -1)
     {
         std::cerr << "recv failed" << std::endl;
+        close(clientFd);
+        return ;
     }
-    else if (byteRead == 0)
+    if (byteRead == 0)
     {
         std::cout << "client disconnected" << std::endl;
+        close(clientFd);
+        return ;
     }
-    else
-    {
-        buffer[byteRead] = '\0';
-        std::cout << "received " << byteRead << " bytes:" << std::endl;
-        std::cout << buffer << std::endl;
-    }
+    buffer[byteRead] = '\0';
+    std::cout << "received " << byteRead << " bytes:" << std::endl;
+    std::cout << buffer << std::endl;
 
     // send
     /* ssize_t send(int socketFd,
@@ -128,11 +114,11 @@ void Server::run()
                     int flags); */
     std::string response =
         "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 12\r\n"
+        "Content-Length: 13\r\n"
         "Content-Type: text/plain\r\n"
         "Connection: close\r\n"
         "\r\n"
-        "Hello World!";
+        "Hello World!\n";
 
     ssize_t bytesSent = send(
         clientFd,
@@ -141,12 +127,8 @@ void Server::run()
         0
     );
     if (bytesSent == -1)
-    {
         std::cerr << "send failed" << std::endl;
-    }
     else
-    {
         std::cout << "sent " << bytesSent << " bytes" << std::endl;
-    }
     close(clientFd);
 }

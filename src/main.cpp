@@ -16,9 +16,13 @@
 int main(int argc, char **argv)
 {
 	if (argc != 2)
+	{
+		std::cerr << "Usage: ./webserv <configuration_file>"
+				  << std::endl;
 		return (1);
-	char *str = argv[1];
-	std::cout << str << std::endl;
+	}
+
+	std::cout << argv[1] << std::endl;
 	// create Config
 	std::cout << "Configuration loaded" << std::endl;
 

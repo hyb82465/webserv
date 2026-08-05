@@ -3,6 +3,8 @@
 
 class Server
 {
+private:
+    int _listenFd;
 public:
     Server();
     ~Server();

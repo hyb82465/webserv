@@ -16,7 +16,8 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 
 INCLUDES = -Iinclude
 SRCS = src/main.cpp \
-	   src/Server.cpp
+	   src/Server.cpp \
+	   src/Client.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(NAME)

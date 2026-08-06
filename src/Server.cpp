@@ -5,6 +5,7 @@
 #include <vector>
 #include <unistd.h>
 #include <cstring>
+#include <cstddef>
 #include <iostream>
 
 Server::Server() : _listenFd(-1)
@@ -78,7 +79,7 @@ void Server::run()
             std::cerr << "poll failed" << std::endl;
             return ;
         }
-        for (size_t i = 0; i < pollFds.size(); ++i)
+        for (std::size_t i = 0; i < pollFds.size(); ++i)
         {
             if (pollFds[i].revents == 0)
                 continue ;

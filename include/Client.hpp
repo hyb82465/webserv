@@ -9,8 +9,8 @@ class Client
 private:
     int _fd;
     std::string _readBuffer;
-    // std::string _writeBuffer;
-    // std::size_t _bytesSent;
+    std::string _writeBuffer;
+    std::size_t _bytesSent;
 public:
     Client();
     Client(int fd);
@@ -19,9 +19,13 @@ public:
     ~Client();
 
     int getFd() const;
-
     const std::string &getReadBuffer() const;
+    const std::string &getWriteBuffer() const;
+    std::size_t getBytesSent() const;
+
     void appendToReadBuffer(const char *data, std::size_t length);
+    void setWriteBuffer(const std::string &data);
+    void addBytesSent(std::size_t amount);
 };
 
 #endif

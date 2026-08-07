@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <vector>
+#include <utility>
 #include <unistd.h>
 #include <cstring>
 #include <cstddef>
@@ -79,11 +80,16 @@ void Server::run()
             std::cerr << "poll failed" << std::endl;
             return ;
         }
-        for (std::size_t i = 0; i < pollFds.size(); ++i)
+        for (std::size_t i = 0; i < pollFds.size(); )
         {
             if (pollFds[i].revents == 0)
+            {
+                ++i;
                 continue ;
-            if (pollFds[i].fd == _listenFd
+            }
+                
+            int fd = pollFds[i].fd;
+            if (fd == _listenFd
                 && (pollFds[i].revents & POLLIN))
             {
                 // accept
@@ -102,6 +108,7 @@ void Server::run()
                 if (clientFd == -1)
                 {
                     std::cerr << "accept failed" << std::endl;
+                    ++i;
                     continue ;
                 }
                 std::cout << "client connected, fd = " << clientFd << std::endl;
@@ -111,6 +118,8 @@ void Server::run()
                 clientPollFd.events = POLLIN;
                 clientPollFd.revents = 0;
                 pollFds.push_back(clientPollFd);
+                _clients.insert(std::make_pair(clientFd, Client(clientFd)));
+                ++i;
             }
             else if (pollFds[i].revents & POLLIN)
             {
@@ -122,7 +131,7 @@ void Server::run()
                 char buffer[4096];
                 std::memset(buffer, 0, sizeof(buffer));
                 ssize_t byteRead = recv(
-                    pollFds[i].fd,
+                    fd,
                     buffer,
                     sizeof(buffer) - 1,
                     0
@@ -133,15 +142,40 @@ void Server::run()
                         std::cout << "client disconnected" << std::endl;
                     else
                         std::cerr << "recv failed" << std::endl;
-                    close(pollFds[i].fd);
+                    close(fd);
+                    _clients.erase(fd);
                     pollFds.erase(pollFds.begin() + i);
-                    --i;
                     continue ;
                 }
-                buffer[byteRead] = '\0';
-                std::cout << "received " << byteRead << " bytes:" << std::endl;
-                std::cout << buffer << std::endl;
+                std::map<int, Client>::iterator it = _clients.find(fd);
+                if (it == _clients.end()) // should not happen
+                {
+                    std::cerr << "client not found" << std::endl;
+                    close(fd);
+                    pollFds.erase(pollFds.begin() + i);
+                    continue ;
+                }
+                it->second.appendToReadBuffer(
+                    buffer,
+                    static_cast<std::size_t>(byteRead)
+                );
+                if (it->second.getReadBuffer().find("\r\n\r\n") == std::string::npos)
+                {
+                    std::cout << "request not complete yet" << std::endl;
+                    ++i;
+                    continue ;
+                }
+                std::cout << it->second.getReadBuffer() << std::endl;
+                std::string response =
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Length: 13\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Connection: close\r\n"
+                    "\r\n"
+                    "Hello World!\n";
+                it->second.setWriteBuffer(response);
                 pollFds[i].events = POLLOUT;
+                ++i;
             }
             else if (pollFds[i].revents & POLLOUT)
             {
@@ -150,28 +184,40 @@ void Server::run()
                                 const void *buffer,
                                 size_t length,
                                 int flags); */
-                std::string response =
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Length: 13\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "Hello World!\n";
-
+                std::map<int, Client>::iterator it = _clients.find(fd);
+                if (it == _clients.end()) // should not happen
+                {
+                    std::cerr << "client not found" << std::endl;
+                    close(fd);
+                    pollFds.erase(pollFds.begin() + i);
+                    continue ;
+                }
+                const std::string &response = it->second.getWriteBuffer();
                 ssize_t bytesSent = send(
-                    pollFds[i].fd,
-                    response.c_str(),
-                    response.size(),
+                    fd,
+                    response.c_str() + it->second.getBytesSent(),
+                    response.size() - it->second.getBytesSent(),
                     0
                 );
                 if (bytesSent == -1)
+                {
                     std::cerr << "send failed" << std::endl;
-                else
-                    std::cout << "sent " << bytesSent << " bytes" << std::endl;
-                close(pollFds[i].fd);
-                pollFds.erase(pollFds.begin() + i);
-                --i;
+                    close(fd);
+                    _clients.erase(fd);
+                    pollFds.erase(pollFds.begin() + i);
+                    continue ;
+                }
+                it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
+                if (it->second.getBytesSent() >= response.size())
+                {
+                    std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
+                    close(fd);
+                    _clients.erase(fd);
+                    pollFds.erase(pollFds.begin() + i);
+                    continue ;
+                }
+                ++i;
             }
-        }      
+        }
     }
 }

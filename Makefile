@@ -6,7 +6,7 @@
 #    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/07 11:56:56 by zhma             ###   ########.fr        #
+#    Updated: 2026/08/07 14:02:23 by zhma             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,8 @@ SRCS = src/main.cpp \
 	   src/Server.cpp \
 	   src/Client.cpp \
 	   src/config/ConfigParser.cpp \
-	   src/config/ServerConfig.cpp 
+	   src/config/ServerConfig.cpp \
+	   src/Utils.cpp 
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(NAME)

@@ -16,7 +16,7 @@ class ConfigParser
         std::vector<ServerConfig> parse(const std::string &filename);
     
     private:
-        std::string getValue(const std::string &line, ServerConfig &config);
+        std::string getValue(const std::string &line);
         
         ServerConfig parseServer(std::ifstream &file);
 

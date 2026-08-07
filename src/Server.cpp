@@ -2,11 +2,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
-#include <vector>
 #include <utility>
 #include <unistd.h>
 #include <cstring>
 #include <cstddef>
+#include <fcntl.h>
+#include <cerrno>
 #include <iostream>
 
 Server::Server() : _listenFd(-1)
@@ -22,6 +23,23 @@ Server::~Server()
     } 
 }
 
+void Server::removeClient(int fd, std::vector<struct pollfd> &pollFds, std::size_t i)
+{
+    close(fd);
+    _clients.erase(fd);
+    pollFds.erase(pollFds.begin() + i);
+}
+
+bool Server::setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+        return false;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        return false;
+    return true;
+}
+
 void Server::run()
 {
     // socket
@@ -34,6 +52,13 @@ void Server::run()
     }
     std::cout << "socket created, fd = " << _listenFd << std::endl;
     
+    // non-blocking
+    if (!setNonBlocking(_listenFd))
+    {
+        std::cerr << "failed to set listen socket non-blocking" << std::endl;
+        return ;
+    }
+
     // bind
     /* int bind(int socketFd,
                 const struct sockaddr *address,
@@ -113,6 +138,15 @@ void Server::run()
                 }
                 std::cout << "client connected, fd = " << clientFd << std::endl;
 
+                // non-blocking
+                if (!setNonBlocking(clientFd))
+                {
+                    std::cerr << "failed to set client socket non-blocking" << std::endl;
+                    close(clientFd);
+                    ++i;
+                    continue ;
+                }
+
                 struct pollfd clientPollFd;
                 clientPollFd.fd = clientFd;
                 clientPollFd.events = POLLIN;
@@ -130,21 +164,24 @@ void Server::run()
                                 int flags); */
                 char buffer[4096];
                 std::memset(buffer, 0, sizeof(buffer));
-                ssize_t byteRead = recv(
-                    fd,
-                    buffer,
-                    sizeof(buffer) - 1,
-                    0
-                );
-                if (byteRead <= 0)
+                ssize_t byteRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
+                if (byteRead == -1)
                 {
-                    if (byteRead == 0)
-                        std::cout << "client disconnected" << std::endl;
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    {
+                        ++i;
+                        continue ;
+                    }
                     else
-                        std::cerr << "recv failed" << std::endl;
-                    close(fd);
-                    _clients.erase(fd);
-                    pollFds.erase(pollFds.begin() + i);
+                    {
+                        removeClient(fd, pollFds, i);
+                        continue ;
+                    }
+                }
+                else if (byteRead == 0)
+                {
+                    std::cout << "client disconnected" << std::endl;
+                    removeClient(fd, pollFds, i);
                     continue ;
                 }
                 std::map<int, Client>::iterator it = _clients.find(fd);
@@ -201,19 +238,20 @@ void Server::run()
                 );
                 if (bytesSent == -1)
                 {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    {
+                        ++i;
+                        continue ;
+                    }
                     std::cerr << "send failed" << std::endl;
-                    close(fd);
-                    _clients.erase(fd);
-                    pollFds.erase(pollFds.begin() + i);
+                    removeClient(fd, pollFds, i);
                     continue ;
                 }
                 it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
                 if (it->second.getBytesSent() >= response.size())
                 {
                     std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
-                    close(fd);
-                    _clients.erase(fd);
-                    pollFds.erase(pollFds.begin() + i);
+                    removeClient(fd, pollFds, i);
                     continue ;
                 }
                 ++i;

@@ -10,20 +10,35 @@
 ConfigParser::ConfigParser() {}
 ConfigParser::~ConfigParser() {}
 
-// only open the file
+ServerConfig ConfigParser::parseServer(std::ifstream &file)
+{
+    ServerConfig config;
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        line = Utils::trim(line);
+        if (line.empty() || line[0] == '#')
+            continue;
+        if (line == "}")
+            return config;
+
+        parseListen(line, config);
+        parseRoot(line, config);
+        parseIndex(line, config);
+    }
+    throw std::runtime_error("Missing '}' for server block ");
+}
+
 std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
 {
+    std::ifstream file(filename.c_str());
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open configuration file: " + filename);
+    
     std::vector<ServerConfig> servers;
     
-    std::ifstream file(filename.c_str());
-    
-    if (!file.is_open())
-    {
-        throw std::runtime_error("Failed to open configuration file: " + filename);
-    }
-    
     std::string line;
-    bool isServerBlock = false;
     
     std::cout << "Reading config ..." << std::endl;
 
@@ -34,31 +49,15 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
             continue; 
         if (line == "server {")
         {
-            if (isServerBlock)
-                throw std::runtime_error("Nested server block: " + line);
-            isServerBlock = true;
-            continue;
+            ServerConfig server = parseServer(file);
+            servers.push_back(server); 
         }
-        if(line == "}")
-        {
-            if (!isServerBlock)
-                throw std::runtime_error("Unexpected '}'" + line);
-            isServerBlock = false;
-            continue;
-        }
-        if (!isServerBlock)
-            throw std::runtime_error("Unexpected line outside of server block: " + line );
-        
-        parseListen(line, config);
-        parseRoot(line, config);
-        parseIndex(line, config);
-    
     }
     file.close();
-    return config;
+    return servers;
 }
 
-std::string ConfigParser::getValue(const std::string &line, ServerConfig &config)
+std::string ConfigParser::getValue(const std::string &line)
 {  
         std::istringstream iss(line);
 
@@ -72,7 +71,7 @@ std::string ConfigParser::getValue(const std::string &line, ServerConfig &config
             throw std::runtime_error("Missing Value");
         }   
 
-        if (value.empty() && value[value.size() - 1] == ';')
+        if (!value.empty() && value[value.size() - 1] == ';')
             value.erase (value.size() - 1);
 
         std::string extra;
@@ -86,7 +85,7 @@ void ConfigParser::parseListen(const std::string &line, ServerConfig &config)
     if(line.find("listen") != 0)
         return;
     
-    std::string value = getValue(line, config);
+    std::string value = getValue(line);
     
     char *endPtr;
     long port = std::strtol(value.c_str(), &endPtr, 10);
@@ -103,7 +102,7 @@ void ConfigParser::parseRoot(const std::string &line, ServerConfig &config)
     if(line.find("root") != 0)
         return;
     
-    config.root = getValue(line, config);
+    config.root = getValue(line);
 }
 
 void ConfigParser::parseIndex(const std::string &line, ServerConfig &config)
@@ -111,5 +110,5 @@ void ConfigParser::parseIndex(const std::string &line, ServerConfig &config)
     if(line.find("index") != 0)
         return;
     
-    config.index = getValue(line, config);
+    config.index = getValue(line);
 }

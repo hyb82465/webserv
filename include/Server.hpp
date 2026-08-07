@@ -13,6 +13,10 @@ private:
 
     void removeClient(int fd, std::vector<struct pollfd> &pollFds, std::size_t i);
     bool setNonBlocking(int fd);
+    bool setupServer();
+    void acceptClient(std::vector<struct pollfd> &pollFds);
+    void handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i);
+    void handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i);
 public:
     Server();
     ~Server();

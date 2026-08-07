@@ -16,18 +16,11 @@ Server::Server() : _listenFd(-1)
 
 Server::~Server()
 {
-    if (_listenFd != -1)
+    for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
-        close(_listenFd);
-        std::cout << "socket closed" << std::endl;
-    } 
-}
-
-void Server::removeClient(int fd, std::vector<struct pollfd> &pollFds, std::size_t i)
-{
-    close(fd);
-    _clients.erase(fd);
-    pollFds.erase(pollFds.begin() + i);
+        if (_pollFds[i].fd != -1)
+            close(_pollFds[i].fd);
+    }
 }
 
 bool Server::setNonBlocking(int fd)
@@ -88,7 +81,14 @@ bool Server::setupServer()
     return true;
 }
 
-void Server::acceptClient(std::vector<struct pollfd> &pollFds)
+void Server::removeClient(int fd, std::size_t i)
+{
+    close(fd);
+    _clients.erase(fd);
+    _pollFds.erase(_pollFds.begin() + i);
+}
+
+void Server::acceptClient()
 {
     // accept
     /* int accept(int socketFd,
@@ -122,12 +122,13 @@ void Server::acceptClient(std::vector<struct pollfd> &pollFds)
     clientPollFd.fd = clientFd;
     clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
-    pollFds.push_back(clientPollFd);
+
+    _pollFds.push_back(clientPollFd);
     _clients.insert(std::make_pair(clientFd, Client(clientFd)));
      std::cout << "client connected, fd = " << clientFd << std::endl;
 }
 
-void Server::handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i)
+void Server::handleRead(int fd, std::size_t &i)
 {
     // recv
     /* ssize_t recv(int socketFd,
@@ -141,13 +142,13 @@ void Server::handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             ++i;
         else
-            removeClient(fd, pollFds, i);
+            removeClient(fd, i);
         return ;
     }
     else if (byteRead == 0)
     {
         std::cout << "client disconnected" << std::endl;
-        removeClient(fd, pollFds, i);
+        removeClient(fd, i);
         return ;
     }
     std::map<int, Client>::iterator it = _clients.find(fd);
@@ -155,7 +156,7 @@ void Server::handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t
     {
         std::cerr << "client not found" << std::endl;
         close(fd);
-        pollFds.erase(pollFds.begin() + i);
+        _pollFds.erase(_pollFds.begin() + i);
         return ;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
@@ -174,11 +175,11 @@ void Server::handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t
         "\r\n"
         "Hello World!\n";
     it->second.setWriteBuffer(response);
-    pollFds[i].events = POLLOUT;
+    _pollFds[i].events = POLLOUT;
     ++i;
 }
 
-void Server::handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i)
+void Server::handleWrite(int fd, std::size_t &i)
 {
     // send
     /* ssize_t send(int socketFd,
@@ -190,7 +191,7 @@ void Server::handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_
     {
         std::cerr << "client not found" << std::endl;
         close(fd);
-        pollFds.erase(pollFds.begin() + i);
+        _pollFds.erase(_pollFds.begin() + i);
         return ;
     }
     const std::string &response = it->second.getWriteBuffer();
@@ -207,7 +208,7 @@ void Server::handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_
         else
         {
             std::cerr << "send failed" << std::endl;
-            removeClient(fd, pollFds, i);
+            removeClient(fd, i);
         }
         return ;
     }
@@ -215,7 +216,7 @@ void Server::handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_
     if (it->second.getBytesSent() >= response.size())
     {
         std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
-        removeClient(fd, pollFds, i);
+        removeClient(fd, i);
         return ;
     }
     ++i;
@@ -225,45 +226,45 @@ void Server::run()
 {
     if (!setupServer())
         return ;
-    std::vector<struct pollfd> pollFds;
+
     struct pollfd listenPollFd;
     listenPollFd.fd = _listenFd;
     listenPollFd.events = POLLIN;
     listenPollFd.revents = 0;
-    pollFds.push_back(listenPollFd);
+    _pollFds.push_back(listenPollFd);
 
     while (true)
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        int readyCount = poll(&pollFds[0], pollFds.size(), -1);
+        int readyCount = poll(&_pollFds[0], _pollFds.size(), -1);
         if (readyCount == -1)
         {
             std::cerr << "poll failed" << std::endl;
             return ;
         }
-        for (std::size_t i = 0; i < pollFds.size(); )
+        for (std::size_t i = 0; i < _pollFds.size(); )
         {
-            if (pollFds[i].revents == 0)
+            if (_pollFds[i].revents == 0)
             {
                 ++i;
                 continue ;
             }
                 
-            int fd = pollFds[i].fd;
+            int fd = _pollFds[i].fd;
             if (fd == _listenFd
-                && (pollFds[i].revents & POLLIN))
+                && (_pollFds[i].revents & POLLIN))
             {
-                acceptClient(pollFds);
+                acceptClient();
                 ++i;
             }
-            else if (pollFds[i].revents & POLLIN)
+            else if (_pollFds[i].revents & POLLIN)
             {
-                handleRead(fd, pollFds, i);
+                handleRead(fd, i);
             }
-            else if (pollFds[i].revents & POLLOUT)
+            else if (_pollFds[i].revents & POLLOUT)
             {
-                handleWrite(fd, pollFds, i);
+                handleWrite(fd, i);
             }
         }
     }

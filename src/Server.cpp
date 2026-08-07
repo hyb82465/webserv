@@ -40,7 +40,7 @@ bool Server::setNonBlocking(int fd)
     return true;
 }
 
-void Server::run()
+bool Server::setupServer()
 {
     // socket
     // int socket(int domain, int type, int protocol);
@@ -48,7 +48,7 @@ void Server::run()
     if (_listenFd == -1)
     {
         std::cerr << "socket failed" << std::endl;
-        return ;
+        return false;
     }
     std::cout << "socket created, fd = " << _listenFd << std::endl;
     
@@ -56,7 +56,7 @@ void Server::run()
     if (!setNonBlocking(_listenFd))
     {
         std::cerr << "failed to set listen socket non-blocking" << std::endl;
-        return ;
+        return false;
     }
 
     // bind
@@ -75,19 +75,156 @@ void Server::run()
         ) == -1)
     {
         std::cerr << "bind failed" << std::endl;
-        return ;
+        return false;
     }
-    std::cout << "socket bound to port 8080" << std::endl;
 
     // listen
     // int listen(int socketFd, int backlog);
     if (listen(_listenFd, SOMAXCONN) == -1)
     {
         std::cerr << "listen failed" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+void Server::acceptClient(std::vector<struct pollfd> &pollFds)
+{
+    // accept
+    /* int accept(int socketFd,
+                struct sockaddr *clientAddress,
+                socklen_t *clientAddressLength); */
+    // struct sockaddr_in clientAddr;
+    // socklen_t clientAddrLen = sizeof(clientAddr);
+    // std::memset(&clientAddr, 0, sizeof(clientAddr));
+    // int clientFd = accept(
+    //     _listenFd,
+    //     reinterpret_cast<struct sockaddr *>(&clientAddr),
+    //     &clientAddrLen
+    // );
+    int clientFd = accept(_listenFd, NULL, NULL);
+    if (clientFd == -1)
+    {
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+            std::cerr << "accept failed" << std::endl;
         return ;
     }
-    std::cout << "server is listening on port 8080" << std::endl;
 
+    // non-blocking
+    if (!setNonBlocking(clientFd))
+    {
+        std::cerr << "failed to set client socket non-blocking" << std::endl;
+        close(clientFd);
+        return ;
+    }
+
+    struct pollfd clientPollFd;
+    clientPollFd.fd = clientFd;
+    clientPollFd.events = POLLIN;
+    clientPollFd.revents = 0;
+    pollFds.push_back(clientPollFd);
+    _clients.insert(std::make_pair(clientFd, Client(clientFd)));
+     std::cout << "client connected, fd = " << clientFd << std::endl;
+}
+
+void Server::handleRead(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i)
+{
+    // recv
+    /* ssize_t recv(int socketFd,
+                    void *buffer,
+                    size_t length,
+                    int flags); */
+    char buffer[4096];
+    ssize_t byteRead = recv(fd, buffer, sizeof(buffer), 0);
+    if (byteRead == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            ++i;
+        else
+            removeClient(fd, pollFds, i);
+        return ;
+    }
+    else if (byteRead == 0)
+    {
+        std::cout << "client disconnected" << std::endl;
+        removeClient(fd, pollFds, i);
+        return ;
+    }
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it == _clients.end()) // should not happen
+    {
+        std::cerr << "client not found" << std::endl;
+        close(fd);
+        pollFds.erase(pollFds.begin() + i);
+        return ;
+    }
+    it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
+    if (it->second.getReadBuffer().find("\r\n\r\n") == std::string::npos)
+    {
+        std::cout << "request not complete yet" << std::endl;
+        ++i;
+        return ;
+    }
+    std::cout << it->second.getReadBuffer() << std::endl;
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Length: 13\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Hello World!\n";
+    it->second.setWriteBuffer(response);
+    pollFds[i].events = POLLOUT;
+    ++i;
+}
+
+void Server::handleWrite(int fd, std::vector<struct pollfd> &pollFds, std::size_t &i)
+{
+    // send
+    /* ssize_t send(int socketFd,
+                    const void *buffer,
+                    size_t length,
+                    int flags); */
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it == _clients.end()) // should not happen
+    {
+        std::cerr << "client not found" << std::endl;
+        close(fd);
+        pollFds.erase(pollFds.begin() + i);
+        return ;
+    }
+    const std::string &response = it->second.getWriteBuffer();
+    ssize_t bytesSent = send(
+        fd,
+        response.c_str() + it->second.getBytesSent(),
+        response.size() - it->second.getBytesSent(),
+        0
+    );
+    if (bytesSent == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            ++i;
+        else
+        {
+            std::cerr << "send failed" << std::endl;
+            removeClient(fd, pollFds, i);
+        }
+        return ;
+    }
+    it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
+    if (it->second.getBytesSent() >= response.size())
+    {
+        std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
+        removeClient(fd, pollFds, i);
+        return ;
+    }
+    ++i;
+}
+
+void Server::run()
+{
+    if (!setupServer())
+        return ;
     std::vector<struct pollfd> pollFds;
     struct pollfd listenPollFd;
     listenPollFd.fd = _listenFd;
@@ -117,144 +254,16 @@ void Server::run()
             if (fd == _listenFd
                 && (pollFds[i].revents & POLLIN))
             {
-                // accept
-                /* int accept(int socketFd,
-                            struct sockaddr *clientAddress,
-                            socklen_t *clientAddressLength); */
-                // struct sockaddr_in clientAddr;
-                // socklen_t clientAddrLen = sizeof(clientAddr);
-                // std::memset(&clientAddr, 0, sizeof(clientAddr));
-                // int clientFd = accept(
-                //     _listenFd,
-                //     reinterpret_cast<struct sockaddr *>(&clientAddr),
-                //     &clientAddrLen
-                // );
-                int clientFd = accept(_listenFd, NULL, NULL);
-                if (clientFd == -1)
-                {
-                    std::cerr << "accept failed" << std::endl;
-                    ++i;
-                    continue ;
-                }
-                std::cout << "client connected, fd = " << clientFd << std::endl;
-
-                // non-blocking
-                if (!setNonBlocking(clientFd))
-                {
-                    std::cerr << "failed to set client socket non-blocking" << std::endl;
-                    close(clientFd);
-                    ++i;
-                    continue ;
-                }
-
-                struct pollfd clientPollFd;
-                clientPollFd.fd = clientFd;
-                clientPollFd.events = POLLIN;
-                clientPollFd.revents = 0;
-                pollFds.push_back(clientPollFd);
-                _clients.insert(std::make_pair(clientFd, Client(clientFd)));
+                acceptClient(pollFds);
                 ++i;
             }
             else if (pollFds[i].revents & POLLIN)
             {
-                // recv
-                /* ssize_t recv(int socketFd,
-                                void *buffer,
-                                size_t length,
-                                int flags); */
-                char buffer[4096];
-                std::memset(buffer, 0, sizeof(buffer));
-                ssize_t byteRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
-                if (byteRead == -1)
-                {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                    {
-                        ++i;
-                        continue ;
-                    }
-                    else
-                    {
-                        removeClient(fd, pollFds, i);
-                        continue ;
-                    }
-                }
-                else if (byteRead == 0)
-                {
-                    std::cout << "client disconnected" << std::endl;
-                    removeClient(fd, pollFds, i);
-                    continue ;
-                }
-                std::map<int, Client>::iterator it = _clients.find(fd);
-                if (it == _clients.end()) // should not happen
-                {
-                    std::cerr << "client not found" << std::endl;
-                    close(fd);
-                    pollFds.erase(pollFds.begin() + i);
-                    continue ;
-                }
-                it->second.appendToReadBuffer(
-                    buffer,
-                    static_cast<std::size_t>(byteRead)
-                );
-                if (it->second.getReadBuffer().find("\r\n\r\n") == std::string::npos)
-                {
-                    std::cout << "request not complete yet" << std::endl;
-                    ++i;
-                    continue ;
-                }
-                std::cout << it->second.getReadBuffer() << std::endl;
-                std::string response =
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Length: 13\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "Hello World!\n";
-                it->second.setWriteBuffer(response);
-                pollFds[i].events = POLLOUT;
-                ++i;
+                handleRead(fd, pollFds, i);
             }
             else if (pollFds[i].revents & POLLOUT)
             {
-                // send
-                /* ssize_t send(int socketFd,
-                                const void *buffer,
-                                size_t length,
-                                int flags); */
-                std::map<int, Client>::iterator it = _clients.find(fd);
-                if (it == _clients.end()) // should not happen
-                {
-                    std::cerr << "client not found" << std::endl;
-                    close(fd);
-                    pollFds.erase(pollFds.begin() + i);
-                    continue ;
-                }
-                const std::string &response = it->second.getWriteBuffer();
-                ssize_t bytesSent = send(
-                    fd,
-                    response.c_str() + it->second.getBytesSent(),
-                    response.size() - it->second.getBytesSent(),
-                    0
-                );
-                if (bytesSent == -1)
-                {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                    {
-                        ++i;
-                        continue ;
-                    }
-                    std::cerr << "send failed" << std::endl;
-                    removeClient(fd, pollFds, i);
-                    continue ;
-                }
-                it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
-                if (it->second.getBytesSent() >= response.size())
-                {
-                    std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
-                    removeClient(fd, pollFds, i);
-                    continue ;
-                }
-                ++i;
+                handleWrite(fd, pollFds, i);
             }
         }
     }

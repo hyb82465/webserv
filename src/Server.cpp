@@ -43,6 +43,11 @@ bool Server::setupServer()
         std::cerr << "socket failed" << std::endl;
         return false;
     }
+    struct pollfd listenPollFd;
+    listenPollFd.fd = _listenFd;
+    listenPollFd.events = POLLIN;
+    listenPollFd.revents = 0;
+    _pollFds.push_back(listenPollFd);
     std::cout << "socket created, fd = " << _listenFd << std::endl;
     
     // non-blocking
@@ -155,8 +160,7 @@ void Server::handleRead(int fd, std::size_t &i)
     if (it == _clients.end()) // should not happen
     {
         std::cerr << "client not found" << std::endl;
-        close(fd);
-        _pollFds.erase(_pollFds.begin() + i);
+        removeClient(fd, i);
         return ;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
@@ -190,8 +194,7 @@ void Server::handleWrite(int fd, std::size_t &i)
     if (it == _clients.end()) // should not happen
     {
         std::cerr << "client not found" << std::endl;
-        close(fd);
-        _pollFds.erase(_pollFds.begin() + i);
+        removeClient(fd, i);
         return ;
     }
     const std::string &response = it->second.getWriteBuffer();
@@ -226,12 +229,6 @@ void Server::run()
 {
     if (!setupServer())
         return ;
-
-    struct pollfd listenPollFd;
-    listenPollFd.fd = _listenFd;
-    listenPollFd.events = POLLIN;
-    listenPollFd.revents = 0;
-    _pollFds.push_back(listenPollFd);
 
     while (true)
     {

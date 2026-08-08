@@ -229,7 +229,6 @@ void Server::run()
 {
     if (!setupServer())
         return ;
-
     while (true)
     {
         // poll
@@ -246,9 +245,21 @@ void Server::run()
             {
                 ++i;
                 continue ;
-            }
-                
+            }    
             int fd = _pollFds[i].fd;
+            if (fd == _listenFd
+                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            {
+                std::cerr << "listen socket error" << std::endl;
+                return ;
+            }
+            if (fd != _listenFd
+                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            {
+                std::cerr << "client connection closed or invalid" << std::endl;
+                removeClient(fd, i);
+                continue ;
+            }
             if (fd == _listenFd
                 && (_pollFds[i].revents & POLLIN))
             {
@@ -256,13 +267,11 @@ void Server::run()
                 ++i;
             }
             else if (_pollFds[i].revents & POLLIN)
-            {
                 handleRead(fd, i);
-            }
             else if (_pollFds[i].revents & POLLOUT)
-            {
                 handleWrite(fd, i);
-            }
+            else
+                ++i;
         }
     }
 }

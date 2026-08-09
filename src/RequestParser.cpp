@@ -100,8 +100,13 @@ ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest
     std::cout << "chunk size string: " << sizeStr << std::endl;
     std::size_t chunkSize;
     std::stringstream ss(sizeStr);
+    if (!(ss >> std::hex >> chunkSize))
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
     std::string extra;
-    if (!(ss >> std::hex >> chunkSize) || ss >> extra)
+    if (ss >> extra)
     {
         request._status = HTTP_BAD_REQUEST;
         return PARSE_ERROR;

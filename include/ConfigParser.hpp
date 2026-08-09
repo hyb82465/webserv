@@ -2,6 +2,7 @@
 # define CONFIGPARSER_HPP
 
 #include <string>
+#include <fstream>
 #include <vector>
 #include "ServerConfig.hpp"
 
@@ -13,7 +14,7 @@ class ConfigParser
         //ConfigParser(const ConfigParser &other);
         //ConfigParser &operator=(const ConfigParser &other);
 
-        std::vector<ServerConfig> parse(const std::string &filename);
+        std::vector<ServerConfig> parse(TokenStream &tokens);
     
     private:
         std::string getValue(const std::string &line);

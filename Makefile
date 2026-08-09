@@ -6,13 +6,13 @@
 #    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/09 15:23:06 by zhma             ###   ########.fr        #
+#    Updated: 2026/08/09 19:04:26 by zhma             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98
 
 INCLUDES = -Iinclude
 SRCS = src/main.cpp \
@@ -22,6 +22,8 @@ SRCS = src/main.cpp \
 	   src/RequestParser.cpp \
 	   src/config/ConfigParser.cpp \
 	   src/config/ServerConfig.cpp \
+	   src/config/Tokenizer.cpp \
+	   src/config/TokenStream.cpp \
 	   src/Utils.cpp 
 OBJS = $(SRCS:.cpp=.o)
 

@@ -1,11 +1,16 @@
 #include "Server.hpp"
+#include "HttpRequest.hpp"
+#include "RequestParser.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
-#include <vector>
+#include <utility>
 #include <unistd.h>
+#include <string>
 #include <cstring>
 #include <cstddef>
+#include <fcntl.h>
+#include <cerrno>
 #include <iostream>
 
 Server::Server() : _listenFd(-1)
@@ -14,14 +19,24 @@ Server::Server() : _listenFd(-1)
 
 Server::~Server()
 {
-    if (_listenFd != -1)
+    for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
-        close(_listenFd);
-        std::cout << "socket closed" << std::endl;
-    } 
+        if (_pollFds[i].fd != -1)
+            close(_pollFds[i].fd);
+    }
 }
 
-void Server::run()
+bool Server::setNonBlocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+        return false;
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        return false;
+    return true;
+}
+
+bool Server::setupServer()
 {
     // socket
     // int socket(int domain, int type, int protocol);
@@ -29,10 +44,22 @@ void Server::run()
     if (_listenFd == -1)
     {
         std::cerr << "socket failed" << std::endl;
-        return ;
+        return false;
     }
+    struct pollfd listenPollFd;
+    listenPollFd.fd = _listenFd;
+    listenPollFd.events = POLLIN;
+    listenPollFd.revents = 0;
+    _pollFds.push_back(listenPollFd);
     std::cout << "socket created, fd = " << _listenFd << std::endl;
     
+    // non-blocking
+    if (!setNonBlocking(_listenFd))
+    {
+        std::cerr << "failed to set listen socket non-blocking" << std::endl;
+        return false;
+    }
+
     // bind
     /* int bind(int socketFd,
                 const struct sockaddr *address,
@@ -49,129 +76,216 @@ void Server::run()
         ) == -1)
     {
         std::cerr << "bind failed" << std::endl;
-        return ;
+        return false;
     }
-    std::cout << "socket bound to port 8080" << std::endl;
 
     // listen
     // int listen(int socketFd, int backlog);
     if (listen(_listenFd, SOMAXCONN) == -1)
     {
         std::cerr << "listen failed" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+void Server::removeClient(int fd, std::size_t i)
+{
+    close(fd);
+    _clients.erase(fd);
+    _pollFds.erase(_pollFds.begin() + i);
+}
+
+void Server::acceptClient()
+{
+    // accept
+    /* int accept(int socketFd,
+                struct sockaddr *clientAddress,
+                socklen_t *clientAddressLength); */
+    // struct sockaddr_in clientAddr;
+    // socklen_t clientAddrLen = sizeof(clientAddr);
+    // std::memset(&clientAddr, 0, sizeof(clientAddr));
+    // int clientFd = accept(
+    //     _listenFd,
+    //     reinterpret_cast<struct sockaddr *>(&clientAddr),
+    //     &clientAddrLen
+    // );
+    int clientFd = accept(_listenFd, NULL, NULL);
+    if (clientFd == -1)
+    {
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+            std::cerr << "accept failed" << std::endl;
         return ;
     }
-    std::cout << "server is listening on port 8080" << std::endl;
 
-    std::vector<struct pollfd> pollFds;
-    struct pollfd listenPollFd;
-    listenPollFd.fd = _listenFd;
-    listenPollFd.events = POLLIN;
-    listenPollFd.revents = 0;
-    pollFds.push_back(listenPollFd);
+    // non-blocking
+    if (!setNonBlocking(clientFd))
+    {
+        std::cerr << "failed to set client socket non-blocking" << std::endl;
+        close(clientFd);
+        return ;
+    }
 
+    struct pollfd clientPollFd;
+    clientPollFd.fd = clientFd;
+    clientPollFd.events = POLLIN;
+    clientPollFd.revents = 0;
+
+    _pollFds.push_back(clientPollFd);
+    _clients.insert(std::make_pair(clientFd, Client(clientFd)));
+     std::cout << "client connected, fd = " << clientFd << std::endl;
+}
+
+void Server::handleRead(int fd, std::size_t &i)
+{
+    // recv
+    /* ssize_t recv(int socketFd,
+                    void *buffer,
+                    size_t length,
+                    int flags); */
+    char buffer[4096];
+    ssize_t byteRead = recv(fd, buffer, sizeof(buffer), 0);
+    if (byteRead == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            ++i;
+        else
+            removeClient(fd, i);
+        return ;
+    }
+    else if (byteRead == 0)
+    {
+        std::cout << "client disconnected" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it == _clients.end()) // should not happen
+    {
+        std::cerr << "client not found" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
+    HttpRequest request;
+    RequestParser parser;
+    ParseResult result = parser.parse(it->second.getReadBuffer(), request);
+    if (result == PARSE_INCOMPLETE)
+    {
+        std::cout << "request incomplete" << std::endl;
+        ++i;
+        return ;
+    }
+    else if (result == PARSE_ERROR)
+    {
+        std::cout << "request parse error" << std::endl;
+        ++i;
+        return ;
+    }
+    std::cout << "request complete" << std::endl;
+    std::cout << it->second.getReadBuffer() << std::endl;
+
+    std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Length: 13\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Hello World!\n";
+    it->second.setWriteBuffer(response);
+    _pollFds[i].events = POLLOUT;
+    ++i;
+}
+
+void Server::handleWrite(int fd, std::size_t &i)
+{
+    // send
+    /* ssize_t send(int socketFd,
+                    const void *buffer,
+                    size_t length,
+                    int flags); */
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it == _clients.end()) // should not happen
+    {
+        std::cerr << "client not found" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    const std::string &response = it->second.getWriteBuffer();
+    ssize_t bytesSent = send(
+        fd,
+        response.c_str() + it->second.getBytesSent(),
+        response.size() - it->second.getBytesSent(),
+        0
+    );
+    if (bytesSent == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            ++i;
+        else
+        {
+            std::cerr << "send failed" << std::endl;
+            removeClient(fd, i);
+        }
+        return ;
+    }
+    it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
+    if (it->second.getBytesSent() >= response.size())
+    {
+        std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    ++i;
+}
+
+void Server::run()
+{
+    if (!setupServer())
+        return ;
     while (true)
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        int readyCount = poll(&pollFds[0], pollFds.size(), -1);
+        int readyCount = poll(&_pollFds[0], _pollFds.size(), -1);
         if (readyCount == -1)
         {
             std::cerr << "poll failed" << std::endl;
             return ;
         }
-        for (std::size_t i = 0; i < pollFds.size(); ++i)
+        for (std::size_t i = 0; i < _pollFds.size(); )
         {
-            if (pollFds[i].revents == 0)
+            if (_pollFds[i].revents == 0)
+            {
+                ++i;
                 continue ;
-            if (pollFds[i].fd == _listenFd
-                && (pollFds[i].revents & POLLIN))
+            }    
+            int fd = _pollFds[i].fd;
+            if (fd == _listenFd
+                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
-                // accept
-                /* int accept(int socketFd,
-                            struct sockaddr *clientAddress,
-                            socklen_t *clientAddressLength); */
-                // struct sockaddr_in clientAddr;
-                // socklen_t clientAddrLen = sizeof(clientAddr);
-                // std::memset(&clientAddr, 0, sizeof(clientAddr));
-                // int clientFd = accept(
-                //     _listenFd,
-                //     reinterpret_cast<struct sockaddr *>(&clientAddr),
-                //     &clientAddrLen
-                // );
-                int clientFd = accept(_listenFd, NULL, NULL);
-                if (clientFd == -1)
-                {
-                    std::cerr << "accept failed" << std::endl;
-                    continue ;
-                }
-                std::cout << "client connected, fd = " << clientFd << std::endl;
-
-                struct pollfd clientPollFd;
-                clientPollFd.fd = clientFd;
-                clientPollFd.events = POLLIN;
-                clientPollFd.revents = 0;
-                pollFds.push_back(clientPollFd);
+                std::cerr << "listen socket error" << std::endl;
+                return ;
             }
-            else if (pollFds[i].revents & POLLIN)
+            if (fd != _listenFd
+                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
-                // recv
-                /* ssize_t recv(int socketFd,
-                                void *buffer,
-                                size_t length,
-                                int flags); */
-                char buffer[4096];
-                std::memset(buffer, 0, sizeof(buffer));
-                ssize_t byteRead = recv(
-                    pollFds[i].fd,
-                    buffer,
-                    sizeof(buffer) - 1,
-                    0
-                );
-                if (byteRead <= 0)
-                {
-                    if (byteRead == 0)
-                        std::cout << "client disconnected" << std::endl;
-                    else
-                        std::cerr << "recv failed" << std::endl;
-                    close(pollFds[i].fd);
-                    pollFds.erase(pollFds.begin() + i);
-                    --i;
-                    continue ;
-                }
-                buffer[byteRead] = '\0';
-                std::cout << "received " << byteRead << " bytes:" << std::endl;
-                std::cout << buffer << std::endl;
-                pollFds[i].events = POLLOUT;
+                std::cerr << "client connection closed or invalid" << std::endl;
+                removeClient(fd, i);
+                continue ;
             }
-            else if (pollFds[i].revents & POLLOUT)
+            if (fd == _listenFd
+                && (_pollFds[i].revents & POLLIN))
             {
-                // send
-                /* ssize_t send(int socketFd,
-                                const void *buffer,
-                                size_t length,
-                                int flags); */
-                std::string response =
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Length: 13\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "Hello World!\n";
-
-                ssize_t bytesSent = send(
-                    pollFds[i].fd,
-                    response.c_str(),
-                    response.size(),
-                    0
-                );
-                if (bytesSent == -1)
-                    std::cerr << "send failed" << std::endl;
-                else
-                    std::cout << "sent " << bytesSent << " bytes" << std::endl;
-                close(pollFds[i].fd);
-                pollFds.erase(pollFds.begin() + i);
-                --i;
+                acceptClient();
+                ++i;
             }
-        }      
+            else if (_pollFds[i].revents & POLLIN)
+                handleRead(fd, i);
+            else if (_pollFds[i].revents & POLLOUT)
+                handleWrite(fd, i);
+            else
+                ++i;
+        }
     }
 }

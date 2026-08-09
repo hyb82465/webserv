@@ -6,7 +6,7 @@
 #    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/07 14:02:23 by zhma             ###   ########.fr        #
+#    Updated: 2026/08/09 15:23:06 by zhma             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,6 +18,8 @@ INCLUDES = -Iinclude
 SRCS = src/main.cpp \
 	   src/Server.cpp \
 	   src/Client.cpp \
+	   src/HttpRequest.cpp \
+	   src/RequestParser.cpp \
 	   src/config/ConfigParser.cpp \
 	   src/config/ServerConfig.cpp \
 	   src/Utils.cpp 

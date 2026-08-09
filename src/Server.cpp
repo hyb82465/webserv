@@ -1,9 +1,12 @@
 #include "Server.hpp"
+#include "HttpRequest.hpp"
+#include "RequestParser.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <utility>
 #include <unistd.h>
+#include <string>
 #include <cstring>
 #include <cstddef>
 #include <fcntl.h>
@@ -164,13 +167,24 @@ void Server::handleRead(int fd, std::size_t &i)
         return ;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
-    if (it->second.getReadBuffer().find("\r\n\r\n") == std::string::npos)
+    HttpRequest request;
+    RequestParser parser;
+    ParseResult result = parser.parse(it->second.getReadBuffer(), request);
+    if (result == PARSE_INCOMPLETE)
     {
-        std::cout << "request not complete yet" << std::endl;
+        std::cout << "request incomplete" << std::endl;
         ++i;
         return ;
     }
+    else if (result == PARSE_ERROR)
+    {
+        std::cout << "request parse error" << std::endl;
+        ++i;
+        return ;
+    }
+    std::cout << "request complete" << std::endl;
     std::cout << it->second.getReadBuffer() << std::endl;
+
     std::string response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Length: 13\r\n"

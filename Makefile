@@ -18,6 +18,8 @@ INCLUDES = -Iinclude
 SRCS = src/main.cpp \
 	   src/Server.cpp \
 	   src/Client.cpp \
+	   src/HttpRequest.cpp \
+	   src/RequestParser.cpp \
 	   src/config/ConfigParser.cpp \
 	   src/config/ServerConfig.cpp \
 	   src/Utils.cpp 

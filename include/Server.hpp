@@ -12,6 +12,8 @@ private:
     std::map<int, Client> _clients;
     std::vector<struct pollfd> _pollFds;
 
+    Server(const Server &other);
+    Server &operator=(const Server &other);
 
     bool setNonBlocking(int fd);
     bool setupServer();

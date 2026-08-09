@@ -88,30 +88,58 @@ ParseResult RequestParser::parseContentLengthBody(const std::string &body, HttpR
 
 ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest &request)
 {
-    std::size_t lineEnd = body.find("\r\n");
-    if (lineEnd == std::string::npos)
-        return PARSE_INCOMPLETE;
-    std::string sizeStr = body.substr(0, lineEnd);
-    if (sizeStr.empty())
+    request._body.clear();
+    std::size_t pos = 0;
+    while (true)
     {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
+        std::size_t lineEnd = body.find("\r\n", pos);
+        if (lineEnd == std::string::npos)
+            return PARSE_INCOMPLETE;
+        std::string sizeStr = body.substr(pos, lineEnd - pos);
+        if (sizeStr.empty())
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        std::cout << "chunk size string: " << sizeStr << std::endl;
+        std::size_t chunkSize;
+        std::stringstream ss(sizeStr);
+        if (!(ss >> std::hex >> chunkSize))
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        std::string extra;
+        if (ss >> extra)
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        if (chunkSize == 0)
+        {
+            if (body.size() < lineEnd + 4)
+                return PARSE_INCOMPLETE;
+            if (body[lineEnd + 2] != '\r' || body[lineEnd + 3] != '\n')
+            {
+                request._status = HTTP_BAD_REQUEST;
+                return PARSE_ERROR;
+            }
+            request._status = HTTP_OK;
+            return PARSE_COMPLETE;
+        }
+        std::size_t dataStart = lineEnd + 2;
+        std::size_t dataEnd = dataStart + chunkSize;
+        if (body.size() < dataEnd + 2)
+            return PARSE_INCOMPLETE;
+        if (body[dataEnd] != '\r' || body[dataEnd + 1] != '\n')
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        std::string chunkData = body.substr(dataStart, chunkSize);
+        request._body += chunkData;
+        pos = dataEnd + 2;
     }
-    std::cout << "chunk size string: " << sizeStr << std::endl;
-    std::size_t chunkSize;
-    std::stringstream ss(sizeStr);
-    if (!(ss >> std::hex >> chunkSize))
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    std::string extra;
-    if (ss >> extra)
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    return PARSE_INCOMPLETE;
 }
 
 ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)

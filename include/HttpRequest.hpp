@@ -20,8 +20,15 @@ private:
     HttpStatus _status;
 public:
     HttpRequest();
+    HttpRequest(const HttpRequest &other);
+    HttpRequest &operator=(const HttpRequest &other);
     ~HttpRequest();
 
+    const std::string &getMethod() const;
+    const std::string &getPath() const;
+    const std::string &getVersion() const;
+    std::string getHeader(const std::string &key) const;
+    const std::string &getBody() const;
     HttpStatus getStatus() const;
 };
 

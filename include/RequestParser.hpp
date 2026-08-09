@@ -18,7 +18,8 @@ class RequestParser
 private:
     HttpStatus parseRequestLine(const std::string &line, HttpRequest &request);
     HttpStatus parseHeaders(const std::string &headers, HttpRequest &request);
-    HttpStatus parseBody(const std::string &body, HttpRequest &request);
+    ParseResult parseContentLengthBody(const std::string &body, HttpRequest &request);
+    ParseResult parseChunkedBody(const std::string &body, HttpRequest &request);
 
     std::string toLower(const std::string &str);
 public:

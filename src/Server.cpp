@@ -147,10 +147,8 @@ void Server::handleRead(int fd, std::size_t &i)
     ssize_t byteRead = recv(fd, buffer, sizeof(buffer), 0);
     if (byteRead == -1)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            ++i;
-        else
-            removeClient(fd, i);
+        std::cerr << "recv failed" << std::endl;
+        removeClient(fd, i);
         return ;
     }
     else if (byteRead == 0)
@@ -232,13 +230,8 @@ void Server::handleWrite(int fd, std::size_t &i)
     );
     if (bytesSent == -1)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            ++i;
-        else
-        {
-            std::cerr << "send failed" << std::endl;
-            removeClient(fd, i);
-        }
+        std::cerr << "send failed" << std::endl;
+        removeClient(fd, i);
         return ;
     }
     it->second.addBytesSent(static_cast<std::size_t>(bytesSent));

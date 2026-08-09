@@ -2,6 +2,7 @@
 #include "RequestParser.hpp"
 #include <cctype>
 #include <sstream>
+#include <iomanip>
 #include <iostream>
 
 RequestParser::RequestParser()
@@ -20,7 +21,6 @@ std::string RequestParser::toLower(const std::string &str)
                 static_cast<unsigned char>(result[i]))
         );
     }
-        
     return result;
 }
 
@@ -79,10 +79,34 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
     return HTTP_OK;
 }
 
-HttpStatus RequestParser::parseBody(const std::string &body, HttpRequest &request)
+ParseResult RequestParser::parseContentLengthBody(const std::string &body, HttpRequest &request)
 {
     request._body = body;
-    return HTTP_OK;
+    request._status = HTTP_OK;
+    return PARSE_COMPLETE;
+}
+
+ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest &request)
+{
+    std::size_t lineEnd = body.find("\r\n");
+    if (lineEnd == std::string::npos)
+        return PARSE_INCOMPLETE;
+    std::string sizeStr = body.substr(0, lineEnd);
+    if (sizeStr.empty())
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
+    std::cout << "chunk size string: " << sizeStr << std::endl;
+    std::size_t chunkSize;
+    std::stringstream ss(sizeStr);
+    std::string extra;
+    if (!(ss >> std::hex >> chunkSize) || ss >> extra)
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
+    return PARSE_INCOMPLETE;
 }
 
 ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
@@ -115,49 +139,65 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
     }
 
     // body
-    std::map<std::string, std::string>::iterator it =
-        request._headers.find("content-length");
-    if (it == request._headers.end())
+    std::size_t bodyStart = headerEnd + 4;
+    std::string body = raw.substr(bodyStart);
+    std::map<std::string, std::string>::iterator contentLength =
+            request._headers.find("content-length");
+    std::map<std::string, std::string>::iterator transferEncoding =
+            request._headers.find("transfer-encoding");
+    if (contentLength != request._headers.end()
+        && transferEncoding != request._headers.end())
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
+    if (contentLength != request._headers.end())
+    {
+        const std::string &value = contentLength->second;
+        if (value.empty())
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            if (!std::isdigit(static_cast<unsigned char>(value[i])))
+            {
+                request._status = HTTP_BAD_REQUEST;
+                return PARSE_ERROR;
+            }
+        }
+        std::stringstream ss(value);
+        std::size_t len;
+        if (!(ss >> len))
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        std::string extra;
+        if (ss >> extra)
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        std::size_t bodySize = raw.size() - bodyStart;
+        if (bodySize < len)
+            return PARSE_INCOMPLETE;
+        return parseContentLengthBody(body, request);
+    }
+    else if (transferEncoding != request._headers.end())
+    {
+        if (transferEncoding->second != "chunked")
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
+        return parseChunkedBody(body, request);
+    }
+    else
     {
         request._body = "";
         request._status = HTTP_OK;
         return PARSE_COMPLETE;
     }
-    const std::string &value = it->second;
-    if (value.empty())
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    for (std::size_t i = 0; i < value.size(); ++i)
-    {
-        if (!std::isdigit(static_cast<unsigned char>(value[i])))
-        {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
-        }
-    }
-    std::stringstream ss(it->second);
-    std::size_t len;
-    if (!(ss >> len))
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    std::string extra;
-    if (ss >> extra)
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    std::size_t bodyStart = headerEnd + 4;
-    std::size_t bodySize = raw.size() - bodyStart;
-    if (bodySize < len)
-        return PARSE_INCOMPLETE;
-    std::string body = raw.substr(bodyStart, len);
-    request._status = parseBody(body, request);
-    if (request._status != HTTP_OK)
-        return PARSE_ERROR;
-
-    return PARSE_COMPLETE;
 }

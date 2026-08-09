@@ -1,5 +1,6 @@
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
+#include <cctype>
 #include <sstream>
 #include <iostream>
 
@@ -8,6 +9,20 @@ RequestParser::RequestParser()
 
 RequestParser::~RequestParser()
 {}
+
+std::string RequestParser::toLower(const std::string &str)
+{
+    std::string result = str;
+    for (std::size_t i = 0; i < result.size(); ++i)
+    {
+        result[i] = static_cast<char>(
+            std::tolower(
+                static_cast<unsigned char>(result[i]))
+        );
+    }
+        
+    return result;
+}
 
 HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest &request)
 {
@@ -47,9 +62,15 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
         std::string key = line.substr(0, colon);
         if (key.empty())
             return HTTP_BAD_REQUEST;
+        key = toLower(key);
         std::string value = line.substr(colon + 1);
         while (!value.empty() && value[0] == ' ')
             value.erase(0, 1);
+        if (request._headers.find(key) != request._headers.end())
+        {
+            if (key == "host" || key == "content-length")
+                return HTTP_BAD_REQUEST;
+        } 
         request._headers[key] = value;
         if (end == std::string::npos)
             break ;
@@ -70,6 +91,7 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
     if (headerEnd == std::string::npos)
         return PARSE_INCOMPLETE;
 
+    // line
     std::size_t lineEnd = raw.find("\r\n");
     if (lineEnd == std::string::npos)
         return PARSE_ERROR;
@@ -78,19 +100,42 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
     if (request._status != HTTP_OK)
         return PARSE_ERROR;
 
+    // headers
     std::size_t headerStart = lineEnd + 2;
     std::string headers = raw.substr(headerStart, (headerEnd - headerStart));
     request._status = parseHeaders(headers, request);
     if (request._status != HTTP_OK)
         return PARSE_ERROR;
+    std::map<std::string, std::string>::iterator host =
+        request._headers.find("host");
+    if (host == request._headers.end() || host->second.empty())
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
 
+    // body
     std::map<std::string, std::string>::iterator it =
-        request._headers.find("Content-Length");
+        request._headers.find("content-length");
     if (it == request._headers.end())
     {
         request._body = "";
         request._status = HTTP_OK;
         return PARSE_COMPLETE;
+    }
+    const std::string &value = it->second;
+    if (value.empty())
+    {
+        request._status = HTTP_BAD_REQUEST;
+        return PARSE_ERROR;
+    }
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        if (!std::isdigit(static_cast<unsigned char>(value[i])))
+        {
+            request._status = HTTP_BAD_REQUEST;
+            return PARSE_ERROR;
+        }
     }
     std::stringstream ss(it->second);
     std::size_t len;

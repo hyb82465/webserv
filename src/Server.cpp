@@ -178,11 +178,23 @@ void Server::handleRead(int fd, std::size_t &i)
     }
     else if (result == PARSE_ERROR)
     {
-        std::cout << "request parse error" << std::endl;
+        std::cout << "parse error, status = "
+                  << request.getStatus()
+                  << std::endl;
         ++i;
         return ;
     }
-    std::cout << "request complete" << std::endl;
+    
+    std::cout << "method: "
+              << request.getMethod()
+              << std::endl;
+    std::cout << "path: "
+              << request.getPath()
+              << std::endl;
+    std::cout << "body: "
+              << request.getBody()
+              << std::endl;
+
     std::cout << it->second.getReadBuffer() << std::endl;
 
     std::string response =

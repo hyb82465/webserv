@@ -20,6 +20,7 @@ SRCS = src/main.cpp \
 	   src/Client.cpp \
 	   src/HttpRequest.cpp \
 	   src/RequestParser.cpp \
+	   src/HttpResponse.cpp \
 	   src/config/ConfigParser.cpp \
 	   src/config/ServerConfig.cpp \
 	   src/config/Tokenizer.cpp \

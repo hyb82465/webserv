@@ -1,5 +1,6 @@
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
+#include "Utils.hpp"
 #include <cctype>
 #include <sstream>
 #include <iomanip>
@@ -10,19 +11,6 @@ RequestParser::RequestParser()
 
 RequestParser::~RequestParser()
 {}
-
-std::string RequestParser::toLower(const std::string &str)
-{
-    std::string result = str;
-    for (std::size_t i = 0; i < result.size(); ++i)
-    {
-        result[i] = static_cast<char>(
-            std::tolower(
-                static_cast<unsigned char>(result[i]))
-        );
-    }
-    return result;
-}
 
 HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest &request)
 {
@@ -62,10 +50,8 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
         std::string key = line.substr(0, colon);
         if (key.empty())
             return HTTP_BAD_REQUEST;
-        key = toLower(key);
-        std::string value = line.substr(colon + 1);
-        while (!value.empty() && value[0] == ' ')
-            value.erase(0, 1);
+        key = Utils::toLower(key);
+        std::string value = Utils::trim(line.substr(colon + 1));
         if (request._headers.find(key) != request._headers.end())
         {
             if (key == "host" || key == "content-length")
@@ -216,11 +202,11 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
         std::size_t bodySize = raw.size() - bodyStart;
         if (bodySize < len)
             return PARSE_INCOMPLETE;
-        return parseContentLengthBody(body, request);
+        return parseContentLengthBody(body.substr(0, len), request);
     }
     else if (transferEncoding != request._headers.end())
     {
-        if (transferEncoding->second != "chunked")
+        if (Utils::toLower(transferEncoding->second) != "chunked")
         {
             request._status = HTTP_BAD_REQUEST;
             return PARSE_ERROR;

@@ -2,6 +2,7 @@
 # define SERVERCONFIG_HPP
 
 #include <string>
+#include "LocationConfig.hpp"
 
 class ServerConfig
 {
@@ -14,6 +15,7 @@ class ServerConfig
         int port;
         std::string root;
         std::string index;
+        std::vector<LocationConfig> locations;
 };
 
 #endif 

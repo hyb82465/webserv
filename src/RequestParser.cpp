@@ -24,8 +24,6 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
     std::string extra;
     if (ss >> extra)
         return HTTP_BAD_REQUEST;
-    if (request._path.empty() || request._path[0] != '/')
-        return HTTP_BAD_REQUEST;
     std::size_t queryPos = request._path.find('?');
     if (queryPos != std::string::npos)
     {
@@ -34,6 +32,8 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
     }
     else
         request._query = "";
+    if (request._path.empty() || request._path[0] != '/')
+        return HTTP_BAD_REQUEST;
     if (request._version != "HTTP/1.1")
         return HTTP_VERSION_NOT_SUPPORTED;
     if (request._method != "GET"
@@ -151,8 +151,12 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
 
     // line
     std::size_t lineEnd = raw.find("\r\n");
+    // would not happen
     if (lineEnd == std::string::npos)
+    {
+        request._status = HTTP_BAD_REQUEST;
         return PARSE_ERROR;
+    }
     std::string requestLine = raw.substr(0, lineEnd);
     request._status = parseRequestLine(requestLine, request);
     if (request._status != HTTP_OK)

@@ -6,7 +6,7 @@
 class Tokenizer
 {
     public:
-        std::vector<std::string> getTokens(const std::string &fileContent);
+        std::vector<std::string> tokenize(const std::string &fileContent);
 };
 
 #endif

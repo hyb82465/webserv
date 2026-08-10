@@ -1,5 +1,5 @@
 #include "Tokenizer.hpp"
-std::vector<std::string> Tokenizer::getTokens(const std::string &fileContent)
+std::vector<std::string> Tokenizer::tokenize(const std::string &fileContent)
 {
     std::vector<std::string> tokens;
     std::string token;

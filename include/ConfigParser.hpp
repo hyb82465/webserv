@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include "ServerConfig.hpp"
+#include "TokenStream.hpp"
 
 class ConfigParser
 {
@@ -14,16 +15,14 @@ class ConfigParser
         //ConfigParser(const ConfigParser &other);
         //ConfigParser &operator=(const ConfigParser &other);
 
-        std::vector<ServerConfig> parse(TokenStream &tokens);
+        std::vector<ServerConfig> parse(const std::string &filename);
     
-    private:
-        std::string getValue(const std::string &line);
-        
-        ServerConfig parseServer(std::ifstream &file);
+    private:    
+        ServerConfig parseServer(TokenStream &tokens);
 
-        void parseListen(const std::string &line, ServerConfig &config);
-        void parseRoot(const std::string &line, ServerConfig &config);
-        void parseIndex(const std::string &line, ServerConfig &config);
+        void parseListen(TokenStream &tokens, ServerConfig &config);
+        void parseRoot(TokenStream &tokens, ServerConfig &config);
+        void parseIndex(TokenStream &tokens, ServerConfig &config);
 };
 
 #endif

@@ -8,6 +8,7 @@ class TokenStream
 {
     public:
         TokenStream(const std::vector<std::string> &tokens); 
+        
         bool hasNext() const;
         std::string peek() const;
         std::string consume();

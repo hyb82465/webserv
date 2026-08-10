@@ -13,6 +13,7 @@ class HttpRequest
 private:
     std::string _method;
     std::string _path;
+    std::string _query;
     std::string _version;
     std::map<std::string, std::string> _headers;
     std::string _body;
@@ -26,6 +27,7 @@ public:
 
     const std::string &getMethod() const;
     const std::string &getPath() const;
+    const std::string &getQuery() const;
     const std::string &getVersion() const;
     std::string getHeader(const std::string &key) const;
     const std::string &getBody() const;

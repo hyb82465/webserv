@@ -147,10 +147,8 @@ void Server::handleRead(int fd, std::size_t &i)
     ssize_t byteRead = recv(fd, buffer, sizeof(buffer), 0);
     if (byteRead == -1)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            ++i;
-        else
-            removeClient(fd, i);
+        std::cerr << "recv failed" << std::endl;
+        removeClient(fd, i);
         return ;
     }
     else if (byteRead == 0)
@@ -178,11 +176,23 @@ void Server::handleRead(int fd, std::size_t &i)
     }
     else if (result == PARSE_ERROR)
     {
-        std::cout << "request parse error" << std::endl;
+        std::cout << "parse error, status = "
+                  << request.getStatus()
+                  << std::endl;
         ++i;
         return ;
     }
-    std::cout << "request complete" << std::endl;
+    
+    std::cout << "method: "
+              << request.getMethod()
+              << std::endl;
+    std::cout << "path: "
+              << request.getPath()
+              << std::endl;
+    std::cout << "body: "
+              << request.getBody()
+              << std::endl;
+
     std::cout << it->second.getReadBuffer() << std::endl;
 
     std::string response =
@@ -220,13 +230,8 @@ void Server::handleWrite(int fd, std::size_t &i)
     );
     if (bytesSent == -1)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            ++i;
-        else
-        {
-            std::cerr << "send failed" << std::endl;
-            removeClient(fd, i);
-        }
+        std::cerr << "send failed" << std::endl;
+        removeClient(fd, i);
         return ;
     }
     it->second.addBytesSent(static_cast<std::size_t>(bytesSent));

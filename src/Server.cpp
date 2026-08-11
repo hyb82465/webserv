@@ -2,6 +2,7 @@
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
 #include "HttpResponse.hpp"
+#include "RequestHandler.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
@@ -196,14 +197,10 @@ void Server::handleRead(int fd, std::size_t &i)
 
     std::cout << it->second.getReadBuffer() << std::endl;
 
-    HttpResponse response;
-    response.setStatus(HTTP_OK);
-    response.setHeader("Content-Type", "text/html");
-    response.setHeader("Connection", "close");
-    response.setBody("<h1>Hello</h1>");
-    std::string raw = response.getResponse();
+    RequestHandler handler;
+    HttpResponse response = handler.handle(request);
+    it->second.setWriteBuffer(response.getResponse());
 
-    it->second.setWriteBuffer(raw);
     _pollFds[i].events = POLLOUT;
     ++i;
 }

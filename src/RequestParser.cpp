@@ -1,5 +1,6 @@
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
+#include "Utils.hpp"
 #include <cctype>
 #include <sstream>
 #include <iomanip>
@@ -10,19 +11,6 @@ RequestParser::RequestParser()
 
 RequestParser::~RequestParser()
 {}
-
-std::string RequestParser::toLower(const std::string &str)
-{
-    std::string result = str;
-    for (std::size_t i = 0; i < result.size(); ++i)
-    {
-        result[i] = static_cast<char>(
-            std::tolower(
-                static_cast<unsigned char>(result[i]))
-        );
-    }
-    return result;
-}
 
 HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest &request)
 {
@@ -36,12 +24,22 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
     std::string extra;
     if (ss >> extra)
         return HTTP_BAD_REQUEST;
+    std::size_t queryPos = request._path.find('?');
+    if (queryPos != std::string::npos)
+    {
+        request._query = request._path.substr(queryPos + 1);
+        request._path = request._path.substr(0, queryPos);
+    }
+    else
+        request._query = "";
+    if (request._path.empty() || request._path[0] != '/')
+        return HTTP_BAD_REQUEST;
     if (request._version != "HTTP/1.1")
         return HTTP_VERSION_NOT_SUPPORTED;
     if (request._method != "GET"
         && request._method != "POST"
         && request._method != "DELETE")
-        return HTTP_BAD_REQUEST;
+        return HTTP_METHOD_NOT_ALLOWED;
     return HTTP_OK;
 }
 
@@ -56,16 +54,19 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
             line = headers.substr(start);
         else
             line = headers.substr(start, (end - start));
-        std::size_t colon = line.find(":");
+        std::size_t colon = line.find(':');
         if (colon == std::string::npos)
             return HTTP_BAD_REQUEST;
         std::string key = line.substr(0, colon);
         if (key.empty())
             return HTTP_BAD_REQUEST;
-        key = toLower(key);
-        std::string value = line.substr(colon + 1);
-        while (!value.empty() && value[0] == ' ')
-            value.erase(0, 1);
+        for (std::size_t i = 0; i < key.size(); i++)
+        {
+            if (key[i] == ' ' || key[i] == '\t')
+                return HTTP_BAD_REQUEST;
+        }
+        key = Utils::toLower(key);
+        std::string value = Utils::trim(line.substr(colon + 1));
         if (request._headers.find(key) != request._headers.end())
         {
             if (key == "host" || key == "content-length")
@@ -150,8 +151,12 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
 
     // line
     std::size_t lineEnd = raw.find("\r\n");
+    // would not happen
     if (lineEnd == std::string::npos)
+    {
+        request._status = HTTP_BAD_REQUEST;
         return PARSE_ERROR;
+    }
     std::string requestLine = raw.substr(0, lineEnd);
     request._status = parseRequestLine(requestLine, request);
     if (request._status != HTTP_OK)
@@ -216,11 +221,12 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
         std::size_t bodySize = raw.size() - bodyStart;
         if (bodySize < len)
             return PARSE_INCOMPLETE;
-        return parseContentLengthBody(body, request);
+        return parseContentLengthBody(body.substr(0, len), request);
     }
     else if (transferEncoding != request._headers.end())
     {
-        if (transferEncoding->second != "chunked")
+        // only accept "chunked"
+        if (Utils::toLower(transferEncoding->second) != "chunked")
         {
             request._status = HTTP_BAD_REQUEST;
             return PARSE_ERROR;

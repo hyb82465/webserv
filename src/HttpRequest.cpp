@@ -6,6 +6,7 @@ HttpRequest::HttpRequest() : _status(HTTP_OK)
 HttpRequest::HttpRequest(const HttpRequest &other)
     : _method(other._method),
       _path(other._path),
+      _query(other._query),
       _version(other._version),
       _headers(other._headers),
       _body(other._body),
@@ -18,6 +19,7 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &other)
     {
         _method = other._method;
         _path = other._path;
+        _query = other._query;
         _version = other._version;
         _headers = other._headers;
         _body = other._body;
@@ -37,6 +39,11 @@ const std::string &HttpRequest::getMethod() const
 const std::string &HttpRequest::getPath() const
 {
     return _path;
+}
+
+const std::string &HttpRequest::getQuery() const
+{
+    return _query;
 }
 
 const std::string &HttpRequest::getVersion() const

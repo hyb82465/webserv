@@ -6,7 +6,7 @@
 /*   By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/04 16:44:33 by yihe              #+#    #+#             */
-/*   Updated: 2026/08/10 18:26:07 by zhma             ###   ########.fr       */
+/*   Updated: 2026/08/11 12:03:56 by zhma             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,9 +34,7 @@ int main(int argc, char **argv)
 	{
 		ConfigParser parser;
 		std::vector<ServerConfig> servers;
-	
 		servers = parser.parse(argv[1]);
-		
 		// std::cout << "Port: " << servers[0].port << std::endl;	
 		// std::cout << "Root: " << servers[0].root << std::endl;
 		// std::cout << "Index: " << servers[0].index << std::endl;
@@ -47,7 +45,7 @@ int main(int argc, char **argv)
 			for (size_t i = 0; i < servers.size(); i++)
 		{
 			std::cout << servers[i].port << std::endl;
-
+			printf("location size: %zu\n", servers[i].locations.size());
 			for (size_t j = 0;
 					j < servers[i].locations.size();
 					j++)

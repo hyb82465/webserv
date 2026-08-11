@@ -52,15 +52,27 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
     while (tokens.hasNext() && tokens.peek() != "}")
     {
         std::string token = tokens.peek();
-
         if (tokens.match("listen"))
+        {
+            // printf("debug1\n"); 
             parseListen(tokens, config);
+        }
         else if (tokens.match("root"))
+        {
+            // printf("debug2\n"); 
             parseRoot(tokens, config);
+        }
         else if (tokens.match("index"))
+        {
             parseIndex(tokens, config);
-        else if (tokens.match("location"))
+            // printf("debug3\n");
+
+        }
+        else if (tokens.peek() == "location")
+        { 
+
             config.locations.push_back(parseLocation(tokens));
+        }
         else
             throw std::runtime_error("Unexpected token: " + token);
     }
@@ -69,17 +81,24 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
 }
 void ConfigParser::parseLocationRoot(TokenStream &tokens, LocationConfig &location)
 {
-    location.root = tokens.consume();
+    tokens.consume(); 
+    location.root = tokens.peek();
+    tokens.consume();
     tokens.expect(";");
+    // printf("debug6\n");
+
 }
 void ConfigParser::parseMethods(TokenStream &tokens, LocationConfig &location)
 {
+    tokens.consume();
     while (tokens.hasNext() && tokens.peek() != ";")
     {
-        std::string method = tokens.consume();
+        std::string method = tokens.peek();
+        // printf("debug7: %s\n", method.c_str());
         if (method != "GET" && method != "POST" && method != "DELETE")
             throw std::runtime_error("Invalid HTTP method: " + method);
         location.methods.push_back(method);
+        tokens.consume();
     }
     tokens.expect(";");
 }                                                                        
@@ -95,10 +114,17 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
     {
         std::string token = tokens.peek();
 
-        if (tokens.match("methods"))
+        if (token == "methods")
+        {
             parseMethods(tokens, location);
-        else if (tokens.match("root"))
+            // printf("debug5: %s\n", location.methods[0].c_str());
+        }
+        else if (token == "root")
+        {
             parseLocationRoot(tokens, location);
+            // printf("debug6: %s\n", location.root.c_str());
+
+        }
         else
             throw std::runtime_error("Unexpected token in location block: " + token);
     }
@@ -120,7 +146,7 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
     Tokenizer tokenizer;
     std::vector<std::string> tokens = tokenizer.tokenize(fileContent);
     
-    //print tokens for debugging
+    // print tokens for debugging
     // std::cout << "Tokens: " << std::endl;
     // for (size_t i = 0; i < tokens.size(); ++i)
     // {

@@ -3,9 +3,14 @@
 
 # include "HttpRequest.hpp"
 # include "HttpResponse.hpp"
+# include <string>
 
 class RequestHandler
 {
+    std::string getMimeType(const std::string &path);
+    HttpResponse handleGet(const HttpRequest &request, const std::string &root);
+    // HttpResponse handlePost(const HttpRequest &request);
+    // HttpResponse handleDelete(const HttpRequest &request);
 public:
     RequestHandler();
     ~RequestHandler();

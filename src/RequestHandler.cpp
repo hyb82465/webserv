@@ -123,10 +123,18 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
     std::string path = root + request.getPath();
     struct stat info;
     bool existed = (stat(path.c_str(), &info) == 0);
-    std::ofstream file(path.c_str());
+    if (existed && !S_ISREG(info.st_mode))
+        return forbidden();
+    std::ofstream file(
+        path.c_str(),
+        std::ios::out | std::ios::binary
+    );
     if (!file.is_open())
         return forbidden();
-    file << request.getBody();
+    file.write(
+        request.getBody().data(),
+        request.getBody().size()
+    );
     if (!file)
     {
         response.setStatus(HTTP_INTERNAL_SERVER_ERROR);

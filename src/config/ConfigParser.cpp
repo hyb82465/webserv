@@ -41,6 +41,33 @@ void ConfigParser::parseIndex(TokenStream &tokens, ServerConfig &config)
     config.index = tokens.consume();
     tokens.expect(";");
 }
+void ConfigParser::parseClientMaxBodySize(TokenStream &tokens, ServerConfig &config)
+{
+    std::string size = tokens.consume();
+    tokens.expect(";");
+    char *endPtr;
+    long sizeValue = std::strtol(size.c_str(), &endPtr, 10);
+    if (*endPtr != '\0')
+        throw std::runtime_error("Invalid Value: " + size);
+    if (sizeValue < 0)
+        throw std::out_of_range("Client Max Body Size Value cannot be negative.");
+    config.client_max_body_size = static_cast<size_t>(sizeValue);
+}
+void ConfigParser::parseErrorPage(TokenStream &tokens, ServerConfig &config)
+{
+    std::string num = tokens.consume();
+    std::string path = tokens.consume();
+    tokens.expect(";");
+
+    char *endPtr;
+
+    long numValue = std::strtol(num.c_str(), &endPtr, 10);
+    if (*endPtr != '\0')
+        throw std::runtime_error("Invalid Value: " + num);
+    if (numValue < 100 || numValue > 599)
+        throw std::out_of_range("Invalid Error Page Number.");
+    config.error_pages[static_cast<int>(numValue)] = path;
+}
 
 ServerConfig ConfigParser::parseServer(TokenStream &tokens)
 {
@@ -67,6 +94,16 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
             parseIndex(tokens, config);
             // printf("debug3\n");
 
+        }
+        else if (tokens.match("client_max_body_size"))
+        {
+            parseClientMaxBodySize(tokens, config);
+            // printf("debug4\n");
+        }
+        else if (tokens.match("error_page"))
+        {
+            parseErrorPage(tokens, config);
+            // printf("debug5\n");
         }
         else if (tokens.peek() == "location")
         { 
@@ -101,7 +138,28 @@ void ConfigParser::parseMethods(TokenStream &tokens, LocationConfig &location)
         tokens.consume();
     }
     tokens.expect(";");
-}                                                                        
+}
+void ConfigParser::parseAutoindex(TokenStream &tokens, LocationConfig &location)
+{
+    tokens.consume();
+    std::string autoindexValue = tokens.consume();
+    tokens.expect(";");
+    if (autoindexValue == "on")
+        location.autoindex = true;
+    else if (autoindexValue == "off")
+        location.autoindex = false;
+    else
+    {
+        throw std::runtime_error("Invalid autoindex value: " + autoindexValue);
+    }
+}
+void ConfigParser::parseUploadStore(TokenStream &tokens, LocationConfig &location)
+{
+    tokens.consume();
+    location.upload_store = tokens.consume();
+    tokens.expect(";");
+}
+
 LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
 {
     LocationConfig location;
@@ -124,6 +182,14 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
             parseLocationRoot(tokens, location);
             // printf("debug6: %s\n", location.root.c_str());
 
+        }
+        else if (token == "autoindex")
+        {
+            parseAutoindex(tokens, location);
+        }
+        else if (token == "upload_store")
+        {
+            parseUploadStore(tokens, location);
         }
         else
             throw std::runtime_error("Unexpected token in location block: " + token);

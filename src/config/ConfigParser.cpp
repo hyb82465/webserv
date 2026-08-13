@@ -213,11 +213,11 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
     std::vector<std::string> tokens = tokenizer.tokenize(fileContent);
     
     // print tokens for debugging
-    // std::cout << "Tokens: " << std::endl;
-    // for (size_t i = 0; i < tokens.size(); ++i)
-    // {
-    //     std::cout << tokens[i] << std::endl;
-    // }
+    std::cout << "Tokens: " << std::endl;
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+        std::cout << tokens[i] << std::endl;
+    }
 
     std::vector<ServerConfig> servers;
     TokenStream tokenStream(tokens);

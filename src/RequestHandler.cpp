@@ -1,14 +1,43 @@
 #include "RequestHandler.hpp"
 #include "HttpStatus.hpp"
+#include "Utils.hpp"
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <cstddef>
 
 RequestHandler::RequestHandler()
 {}
 
 RequestHandler::~RequestHandler()
 {}
+
+std::string RequestHandler::getMimeType(const std::string &path)
+{
+    std::size_t lastDot = path.rfind('.');
+    if (lastDot == std::string::npos)
+        return "application/octet-stream";
+    std::string ext = Utils::toLower(path.substr(lastDot + 1));
+    if (ext == "html")
+        return "text/html";
+    if (ext == "txt")
+        return "text/plain";
+    if (ext == "css")
+        return "text/css";
+    if (ext == "js")
+        return "application/javascript";
+    if (ext == "png")
+        return "image/png";
+    if (ext == "jpg" || ext == "jpeg")
+        return "image/jpeg";
+    if (ext == "gif")
+        return "image/gif";
+    if (ext == "json")
+        return "application/json";
+    if (ext == "pdf")
+        return "application/pdf";
+    return "application/octet-stream";
+}
 
 HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::string &root)
 {
@@ -48,8 +77,9 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
     }
     std::stringstream buffer;
     buffer << file.rdbuf();
+    std::string mimeType = getMimeType(path);
     response.setStatus(HTTP_OK);
-    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Content-Type", mimeType);
     response.setHeader("Connection", "close");
     response.setBody(buffer.str());
     return response;

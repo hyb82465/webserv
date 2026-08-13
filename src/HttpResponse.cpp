@@ -5,6 +5,8 @@ std::string HttpResponse::statusToString() const
 {
     if (_status == HTTP_OK)
         return "200 OK";
+    else if (_status == HTTP_CREATED)
+        return "201 Created";
     else if (_status == HTTP_BAD_REQUEST)
         return "400 Bad Request";
     else if (_status == HTTP_NOT_FOUND)

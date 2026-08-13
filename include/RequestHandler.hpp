@@ -7,9 +7,13 @@
 
 class RequestHandler
 {
+    bool hasParentTraversal(const std::string &path);
+    HttpResponse notFound();
+    HttpResponse forbidden();
     std::string getMimeType(const std::string &path);
+
     HttpResponse handleGet(const HttpRequest &request, const std::string &root);
-    // HttpResponse handlePost(const HttpRequest &request);
+    HttpResponse handlePost(const HttpRequest &request, const std::string &root);
     // HttpResponse handleDelete(const HttpRequest &request);
 public:
     RequestHandler();

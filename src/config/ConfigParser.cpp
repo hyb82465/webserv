@@ -224,6 +224,22 @@ void ConfigParser::parseLocationIndex(TokenStream &tokens, LocationConfig &locat
     location.index= tokens.consume();
     tokens.expect(";");
 }
+
+void ConfigParser::parseCgi(TokenStream &tokens, LocationConfig &location)
+{
+    tokens.consume();
+    std::string extension = tokens.consume();
+    std::string executable = tokens.consume();
+    tokens.expect(";");
+    if (extension.empty())
+        throw std::runtime_error("CGI extension cannot be empty");
+    if (executable.empty())
+        throw std::runtime_error("CGI executable cannot be empty");
+    if (extension[0] != '.')
+        throw std::runtime_error("CGI extension must start with '.':" + extension);
+    
+    location.cgi[extension] = executable;
+}
 LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
 {
     LocationConfig location;
@@ -263,6 +279,10 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
         {
             parseRedirect(tokens, location);
         }
+        else if (token == "cgi")
+        {
+            parseRedirect(tokens, location);
+        }
         else
             throw std::runtime_error("Unexpected token in location block: " + token);
     }
@@ -285,11 +305,11 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
     std::vector<std::string> tokens = tokenizer.tokenize(fileContent);
     
     // print tokens for debugging
-    std::cout << "Tokens: " << std::endl;
-    for (size_t i = 0; i < tokens.size(); ++i)
-    {
-        std::cout << tokens[i] << std::endl;
-    }
+    // std::cout << "Tokens: " << std::endl;
+    // for (size_t i = 0; i < tokens.size(); ++i)
+    // {
+    //     std::cout << tokens[i] << std::endl;
+    // }
 		// printf("debug 1\n");
 
     std::vector<ServerConfig> servers;

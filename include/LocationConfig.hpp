@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 class LocationConfig
 {
@@ -17,6 +18,7 @@ public:
     int redirectCode;
     std::string redirectUrl;
     std::string index;
+    std::map<std::string, std::string> cgi;
 };
 
 #endif

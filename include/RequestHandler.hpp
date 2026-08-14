@@ -7,10 +7,12 @@
 
 class RequestHandler
 {
-    bool hasParentTraversal(const std::string &path);
+private:
     HttpResponse notFound();
     HttpResponse forbidden();
     std::string getMimeType(const std::string &path);
+    std::string getBoundary(const HttpRequest &request);
+    bool hasParentTraversal(const std::string &path);
 
     HttpResponse handleGet(const HttpRequest &request, const std::string &root);
     HttpResponse handlePost(const HttpRequest &request, const std::string &root);

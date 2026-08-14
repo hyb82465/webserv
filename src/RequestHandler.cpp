@@ -12,27 +12,6 @@ RequestHandler::RequestHandler()
 RequestHandler::~RequestHandler()
 {}
 
-// Temporary protection
-bool RequestHandler::hasParentTraversal(const std::string &path)
-{
-    std::size_t start = 0;
-    while (start < path.size())
-    {
-        std::size_t end = path.find('/', start);
-        std::string part;
-        if (end == std::string::npos)
-            part = path.substr(start);
-        else
-            part = path.substr(start, end - start);
-        if (part == "..")
-            return true;
-        if (end == std::string::npos)
-            break ;
-        start = end + 1;
-    }
-    return false;
-}
-
 HttpResponse RequestHandler::notFound()
 {
     HttpResponse response;
@@ -78,6 +57,40 @@ std::string RequestHandler::getMimeType(const std::string &path)
     if (ext == "pdf")
         return "application/pdf";
     return "application/octet-stream";
+}
+
+std::string RequestHandler::getBoundary(const HttpRequest &request)
+{
+    std::string contentType = request.getHeader("content-type");
+    std::string key = "boundary=";
+    std::size_t pos = contentType.find(key);
+    if (pos == std::string::npos)
+    {
+        // error
+    }
+    std::string boundary = contentType.substr(pos + key.size());
+    std::string delimiter = "--" + boundary;
+}
+
+// Temporary protection
+bool RequestHandler::hasParentTraversal(const std::string &path)
+{
+    std::size_t start = 0;
+    while (start < path.size())
+    {
+        std::size_t end = path.find('/', start);
+        std::string part;
+        if (end == std::string::npos)
+            part = path.substr(start);
+        else
+            part = path.substr(start, end - start);
+        if (part == "..")
+            return true;
+        if (end == std::string::npos)
+            break ;
+        start = end + 1;
+    }
+    return false;
 }
 
 HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::string &root)

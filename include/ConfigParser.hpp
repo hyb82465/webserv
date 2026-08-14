@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <map>
 #include "ServerConfig.hpp"
 #include "TokenStream.hpp"
 
@@ -34,6 +35,7 @@ class ConfigParser
         void parseUploadStore(TokenStream &tokens, LocationConfig &location);
         void parseRedirect(TokenStream &tokens, LocationConfig &location);
         void parseLocationIndex(TokenStream &tokens, LocationConfig &location);
+        void parseCgi(TokenStream &tokens, LocationConfig &location);
     };
 
 #endif

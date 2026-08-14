@@ -24,12 +24,22 @@ HttpResponse RequestHandler::notFound()
 }
 
 HttpResponse RequestHandler::forbidden()
- {
+{
     HttpResponse response;
     response.setStatus(HTTP_FORBIDDEN);
     response.setHeader("Content-Type", "text/plain");
     response.setHeader("Connection", "close");
     response.setBody("403 Forbidden");
+    return response;
+}
+
+HttpResponse RequestHandler::internalServerError()
+ {
+    HttpResponse response;
+    response.setStatus(HTTP_INTERNAL_SERVER_ERROR);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("500 Internal Server Error");
     return response;
 }
 
@@ -166,6 +176,20 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
     return parts;
 }
 
+bool RequestHandler::writeFile(const std::string &path, const std::string &data)
+{
+    std::ofstream file(
+        path.c_str(),
+        std::ios::out | std::ios::binary
+    );
+    if (!file.is_open())
+        return false;
+    file.write(data.data(), data.size());
+    if (!file)
+        return false;
+    return true ;
+}
+
 // Temporary protection
 bool RequestHandler::hasParentTraversal(const std::string &path)
 {
@@ -231,46 +255,52 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
         std::string boundary = getBoundary(request);
+        if (boundary.empty())
+        {
+            response.setStatus(HTTP_BAD_REQUEST);
+            response.setHeader("Content-Type", "text/plain");
+            response.setHeader("Connection", "close");
+            response.setBody("400 Bad Request");
+            return response;
+        }
         std::vector<MultipartPart> parts = parseMultipart(request.getBody(), boundary);
-        std::cout << "parts size: "
-                  << parts.size()
-                  << std::endl;
+        bool created = false;
         for (std::size_t i = 0; i < parts.size(); ++i)
         {
-            std::cout << "name: "
-                      << parts[i].name
-                      << std::endl;
-            std::cout << "filename: "
-                      << parts[i].filename
-                      << std::endl;
-            std::cout << "data size: "
-                      << parts[i].data.size()
-                      << std::endl;
+            if (parts[i].filename.empty())
+            {
+                // not file part
+                continue ;
+            }
+            std::string filePath = root;
+            if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
+                filePath += "/";
+            filePath += parts[i].filename;
+            struct stat info;
+            bool existed = (stat(filePath.c_str(), &info) == 0);
+            if (existed && !S_ISREG(info.st_mode))
+                return forbidden();
+            if (!writeFile(filePath, parts[i].data))
+                return internalServerError();
+            if (!existed)
+                created = true;
         }
+        if (created)
+            response.setStatus(HTTP_CREATED);
+        else
+            response.setStatus(HTTP_OK);
+        response.setHeader("Content-Type", "text/plain");
+        response.setHeader("Connection", "close");
+        response.setBody("Upload successful");
+        return response;
     }
     std::string path = root + request.getPath();
     struct stat info;
     bool existed = (stat(path.c_str(), &info) == 0);
     if (existed && !S_ISREG(info.st_mode))
         return forbidden();
-    std::ofstream file(
-        path.c_str(),
-        std::ios::out | std::ios::binary
-    );
-    if (!file.is_open())
-        return forbidden();
-    file.write(
-        request.getBody().data(),
-        request.getBody().size()
-    );
-    if (!file)
-    {
-        response.setStatus(HTTP_INTERNAL_SERVER_ERROR);
-        response.setHeader("Content-Type", "text/plain");
-        response.setHeader("Connection", "close");
-        response.setBody("500 Internal Server Error");
-        return response;
-    }
+    if (!writeFile(path, request.getBody()))
+        return internalServerError();
     if (existed)
         response.setStatus(HTTP_OK);
     else

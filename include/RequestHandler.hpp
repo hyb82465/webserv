@@ -20,9 +20,15 @@ class RequestHandler
 private:
     HttpResponse notFound();
     HttpResponse forbidden();
+    HttpResponse internalServerError();
+
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
-    std::vector<MultipartPart> parseMultipart(const std::string &body, const std::string &boundary);
+    std::vector<MultipartPart> parseMultipart(
+        const std::string &body,
+        const std::string &boundary
+    );
+    bool writeFile(const std::string &path, const std::string &data);
 
     bool hasParentTraversal(const std::string &path);
 

@@ -18,9 +18,11 @@ struct MultipartPart
 class RequestHandler
 {
 private:
-    HttpResponse notFound();
-    HttpResponse forbidden();
-    HttpResponse internalServerError();
+    HttpResponse badRequest(); // 400
+    HttpResponse forbidden(); //403
+    HttpResponse notFound(); // 404
+    HttpResponse methodNotAllowed(); // 405
+    HttpResponse internalServerError(); // 500
 
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);

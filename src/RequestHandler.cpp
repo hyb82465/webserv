@@ -14,6 +14,26 @@ RequestHandler::RequestHandler()
 RequestHandler::~RequestHandler()
 {}
 
+HttpResponse RequestHandler::badRequest()
+{
+    HttpResponse response;
+    response.setStatus(HTTP_BAD_REQUEST);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("400 Bad Request");
+    return response;
+}
+
+HttpResponse RequestHandler::forbidden()
+{
+    HttpResponse response;
+    response.setStatus(HTTP_FORBIDDEN);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("403 Forbidden");
+    return response;
+}
+
 HttpResponse RequestHandler::notFound()
 {
     HttpResponse response;
@@ -24,13 +44,13 @@ HttpResponse RequestHandler::notFound()
     return response;  
 }
 
-HttpResponse RequestHandler::forbidden()
+HttpResponse RequestHandler::methodNotAllowed()
 {
     HttpResponse response;
-    response.setStatus(HTTP_FORBIDDEN);
+    response.setStatus(HTTP_METHOD_NOT_ALLOWED);
     response.setHeader("Content-Type", "text/plain");
     response.setHeader("Connection", "close");
-    response.setBody("403 Forbidden");
+    response.setBody("405 Method Not Allowed");
     return response;
 }
 
@@ -217,6 +237,7 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
     // temporary protection
     if (hasParentTraversal(request.getPath()))
         return forbidden();
+
     std::string path = root + request.getPath();
     struct stat info;
     if (stat(path.c_str(), &info) == -1)
@@ -251,19 +272,12 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
 
 HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::string &root)
 {
-    HttpResponse response;
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
         std::string boundary = getBoundary(request);
         if (boundary.empty())
-        {
-            response.setStatus(HTTP_BAD_REQUEST);
-            response.setHeader("Content-Type", "text/plain");
-            response.setHeader("Connection", "close");
-            response.setBody("400 Bad Request");
-            return response;
-        }
+            return badRequest();
         std::vector<MultipartPart> parts = parseMultipart(request.getBody(), boundary);
         bool created = false;
         for (std::size_t i = 0; i < parts.size(); ++i)
@@ -286,6 +300,7 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
             if (!existed)
                 created = true;
         }
+        HttpResponse response;
         if (created)
             response.setStatus(HTTP_CREATED);
         else
@@ -302,6 +317,7 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
         return forbidden();
     if (!writeFile(path, request.getBody()))
         return internalServerError();
+    HttpResponse response;
     if (existed)
         response.setStatus(HTTP_OK);
     else
@@ -314,7 +330,6 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
 
 HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const std::string &root)
 {
-    HttpResponse response;
     std::string path = root + request.getPath();
     struct stat info;
     if (stat(path.c_str(), &info) == -1)
@@ -323,6 +338,7 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const std:
         return forbidden();
     if (std::remove(path.c_str()) != 0)
         return internalServerError();
+    HttpResponse response;
     response.setStatus(HTTP_OK);
     response.setHeader("Content-Type", "text/plain");
     response.setHeader("Connection", "close");
@@ -339,10 +355,5 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
         return handlePost(request, root);
     if (request.getMethod() == "DELETE")
         return handleDelete(request, root);
-    HttpResponse response;
-    response.setStatus(HTTP_METHOD_NOT_ALLOWED);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("405 Method Not Allowed");
-    return response;
+    return methodNotAllowed();
 }

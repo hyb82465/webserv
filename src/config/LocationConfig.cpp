@@ -1,4 +1,4 @@
 #include "LocationConfig.hpp"
 
-LocationConfig::LocationConfig() {}
+LocationConfig::LocationConfig(): path(""), root(""), autoindex(false), upload_store("") {}
 

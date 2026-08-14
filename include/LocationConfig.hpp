@@ -12,6 +12,8 @@ public:
     std::string path;
     std::string root;
     std::vector<std::string> methods;
+    bool autoindex;
+    std::string upload_store;
 };
 
 #endif

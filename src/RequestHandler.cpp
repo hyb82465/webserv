@@ -5,6 +5,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <cstddef>
+#include <cstdio>
 #include <iostream>
 
 RequestHandler::RequestHandler()
@@ -311,14 +312,33 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
     return response;
 }
 
+HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const std::string &root)
+{
+    HttpResponse response;
+    std::string path = root + request.getPath();
+    struct stat info;
+    if (stat(path.c_str(), &info) == -1)
+        return notFound();
+    if (!S_ISREG(info.st_mode))
+        return forbidden();
+    if (std::remove(path.c_str()) != 0)
+        return internalServerError();
+    response.setStatus(HTTP_OK);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("Delete successful");
+    return response;
+}
+
 HttpResponse RequestHandler::handle(const HttpRequest &request)
 {
+    std::string root = "./www";
     if (request.getMethod() == "GET")
-        return handleGet(request, "./www");
-    else if (request.getMethod() == "POST")
-        return handlePost(request, "./www");
-    // else if (request.getMethod() == "DELETE")
-    // {}
+        return handleGet(request, root);
+    if (request.getMethod() == "POST")
+        return handlePost(request, root);
+    if (request.getMethod() == "DELETE")
+        return handleDelete(request, root);
     HttpResponse response;
     response.setStatus(HTTP_METHOD_NOT_ALLOWED);
     response.setHeader("Content-Type", "text/plain");

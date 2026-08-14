@@ -34,7 +34,7 @@ private:
 
     HttpResponse handleGet(const HttpRequest &request, const std::string &root);
     HttpResponse handlePost(const HttpRequest &request, const std::string &root);
-    // HttpResponse handleDelete(const HttpRequest &request);
+    HttpResponse handleDelete(const HttpRequest &request, const std::string &root);
 public:
     RequestHandler();
     ~RequestHandler();

@@ -6,7 +6,7 @@
 #    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/10 18:13:04 by zhma             ###   ########.fr        #
+#    Updated: 2026/08/14 11:49:20 by zhma             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,6 +27,7 @@ SRCS = src/main.cpp \
 	   src/config/Tokenizer.cpp \
 	   src/config/TokenStream.cpp \
 	   src/config/LocationConfig.cpp \
+	   src/config/ListenConfig.cpp \
 	   src/Utils.cpp 
 OBJS = $(SRCS:.cpp=.o)
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <map>
 #include "ServerConfig.hpp"
 #include "TokenStream.hpp"
 
@@ -21,6 +22,7 @@ class ConfigParser
         ServerConfig parseServer(TokenStream &tokens);
         
         void parseListen(TokenStream &tokens, ServerConfig &config);
+        ListenConfig parseListenValue(const std::string &value);
         void parseRoot(TokenStream &tokens, ServerConfig &config);
         void parseIndex(TokenStream &tokens, ServerConfig &config);
         void parseClientMaxBodySize(TokenStream &tokens, ServerConfig &config);
@@ -31,6 +33,9 @@ class ConfigParser
         void parseLocationRoot(TokenStream &tokens, LocationConfig &location);
         void parseAutoindex(TokenStream &tokens, LocationConfig &location);
         void parseUploadStore(TokenStream &tokens, LocationConfig &location);
+        void parseRedirect(TokenStream &tokens, LocationConfig &location);
+        void parseLocationIndex(TokenStream &tokens, LocationConfig &location);
+        void parseCgi(TokenStream &tokens, LocationConfig &location);
     };
 
 #endif

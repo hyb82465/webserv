@@ -71,7 +71,7 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
         {
             if (key == "host" || key == "content-length")
                 return HTTP_BAD_REQUEST;
-        } 
+        }
         request._headers[key] = value;
         if (end == std::string::npos)
             break ;

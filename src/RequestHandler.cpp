@@ -5,6 +5,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <cstddef>
+#include <iostream>
 
 RequestHandler::RequestHandler()
 {}
@@ -69,8 +70,100 @@ std::string RequestHandler::getBoundary(const HttpRequest &request)
         // error
     }
     std::string boundary = contentType.substr(pos + key.size());
-    std::string delimiter = "--" + boundary;
     return boundary;
+}
+
+std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body,const std::string &boundary)
+{
+    std::vector<MultipartPart> parts;
+    std::string delimiter = "--" + boundary;
+    std::size_t pos = body.find(delimiter);
+    while (pos != std::string::npos)
+    {
+        pos += delimiter.size();
+        if (body.compare(pos, 2, "--") == 0)
+            break ;
+        if (body.compare(pos, 2, "\r\n") != 0)
+            return parts;
+        pos += 2;
+        std::size_t next = body.find(delimiter, pos);
+        if (next == std::string::npos)
+            return parts;
+
+        std::size_t partEnd = next;
+        if (partEnd < 2)
+            return parts;
+        if (body[partEnd - 2] != '\r'
+            || body[partEnd - 1] != '\n')
+            return parts;
+        partEnd -= 2;
+        std::string part = body.substr(pos, partEnd - pos);
+        std::size_t headerEnd = part.find("\r\n\r\n");
+        if (headerEnd == std::string::npos)
+            return parts;
+        std::string headerBlock = part.substr(0, headerEnd);
+        std::string data = part.substr(headerEnd + 4);
+        MultipartPart current;
+        current.data = data;
+        std::size_t startHeader = 0;
+        while (startHeader < headerBlock.size())
+        {
+            std::size_t endHeader = headerBlock.find("\r\n", startHeader);
+            std::string line;
+            if (endHeader == std::string::npos)
+                line = headerBlock.substr(startHeader);
+            else
+                line = headerBlock.substr(startHeader, endHeader - startHeader);
+            std::size_t colon = line.find(':');
+            if (colon == std::string::npos)
+                return parts;
+            std::string key = line.substr(0, colon);
+            if (key.empty())
+                return parts;
+            for (std::size_t i = 0; i < key.size(); i++)
+            {
+                if (key[i] == ' ' || key[i] == '\t')
+                    return parts;
+            }
+            key = Utils::toLower(key);
+            std::string value = Utils::trim(line.substr(colon + 1));
+            current.headers[key] = value;
+            if (endHeader == std::string::npos)
+                break ;
+            startHeader = endHeader + 2;
+        }
+        std::map<std::string, std::string>::const_iterator it =
+            current.headers.find("content-disposition");
+        if (it == current.headers.end())
+            return parts;
+
+        std::string disposition = it->second;
+        std::string nameKey = "name=\"";
+        std::string filenameKey = "filename=\"";
+
+        std::size_t namePos = disposition.find(nameKey);
+        if (namePos != std::string::npos)
+        {
+            std::size_t nameStart = namePos + nameKey.size();
+            std::size_t nameEnd = disposition.find('"', nameStart);
+            if (nameEnd == std::string::npos)
+                return parts;
+            current.name = disposition.substr(nameStart, nameEnd - nameStart);
+        }
+        
+        std::size_t filenamePos = disposition.find(filenameKey);
+        if (filenamePos != std::string::npos)
+        {
+            std::size_t filenameStart = filenamePos + filenameKey.size();
+            std::size_t filenameEnd = disposition.find('"', filenameStart);
+            if (filenameEnd == std::string::npos)
+                return parts;
+            current.filename = disposition.substr(filenameStart, filenameEnd - filenameStart);
+        }
+        parts.push_back(current);
+        pos = next;
+    }
+    return parts;
 }
 
 // Temporary protection
@@ -134,6 +227,27 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
 HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::string &root)
 {
     HttpResponse response;
+    std::string contentType = request.getHeader("content-type");
+    if (contentType.find("multipart/form-data") != std::string::npos)
+    {
+        std::string boundary = getBoundary(request);
+        std::vector<MultipartPart> parts = parseMultipart(request.getBody(), boundary);
+        std::cout << "parts size: "
+                  << parts.size()
+                  << std::endl;
+        for (std::size_t i = 0; i < parts.size(); ++i)
+        {
+            std::cout << "name: "
+                      << parts[i].name
+                      << std::endl;
+            std::cout << "filename: "
+                      << parts[i].filename
+                      << std::endl;
+            std::cout << "data size: "
+                      << parts[i].data.size()
+                      << std::endl;
+        }
+    }
     std::string path = root + request.getPath();
     struct stat info;
     bool existed = (stat(path.c_str(), &info) == 0);

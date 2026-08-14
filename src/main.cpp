@@ -6,7 +6,7 @@
 /*   By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/04 16:44:33 by yihe              #+#    #+#             */
-/*   Updated: 2026/08/14 13:03:46 by zhma             ###   ########.fr       */
+/*   Updated: 2026/08/14 14:43:21 by zhma             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,12 +68,6 @@ int main(int argc, char **argv)
 				std::cout
 					<< servers[i].locations[j].root
 					<< std::endl;
-				// std::cout
-				// 	<< servers[i].locations[j].methods
-				// 	<< std::endl;
-				// std::cout
-				// 	<< servers[i].locations[j].methods
-				// 	<< std::endl;
 				for (size_t k = 0;
 						k < servers[i].locations[j].methods.size();
 						k++)
@@ -82,6 +76,12 @@ int main(int argc, char **argv)
 						<< servers[i].locations[j].methods[k]
 						<< std::endl;
 				}
+				std::cout
+					<< servers[i].locations[j].redirectCode
+					<< std::endl;
+				std::cout
+					<< servers[i].locations[j].redirectUrl
+					<< std::endl;
 			}
 		}
 	}

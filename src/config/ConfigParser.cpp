@@ -197,6 +197,27 @@ void ConfigParser::parseUploadStore(TokenStream &tokens, LocationConfig &locatio
     tokens.expect(";");
 }
 
+void ConfigParser::parseRedirect(TokenStream &tokens, LocationConfig &location)
+{
+    tokens.consume();
+
+    char *endPtr;
+    std::string strcode = tokens.consume();
+    std::string url = tokens.consume();
+    long statusValue = std::strtol(strcode.c_str(), &endPtr, 10);
+    if (*endPtr != '\0')
+        throw std::runtime_error("Invalid redirect status: " +strcode);
+    if (statusValue < 300 || statusValue > 399)
+        throw std::runtime_error("Invalid redirect status code: " + strcode);
+    if (url.empty())
+        throw std::runtime_error("Redirect URL cannot be empty.");
+
+    location.redirectCode = static_cast<int>(statusValue);
+    location.redirectUrl = url;
+    
+    tokens.expect(";");
+}
+
 LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
 {
     LocationConfig location;
@@ -227,6 +248,10 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
         else if (token == "upload_store")
         {
             parseUploadStore(tokens, location);
+        }
+        else if (token == "return")
+        {
+            parseRedirect(tokens, location);
         }
         else
             throw std::runtime_error("Unexpected token in location block: " + token);

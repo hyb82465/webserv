@@ -14,6 +14,8 @@ public:
     std::vector<std::string> methods;
     bool autoindex;
     std::string upload_store;
+    int redirectCode;
+    std::string redirectUrl;
 };
 
 #endif

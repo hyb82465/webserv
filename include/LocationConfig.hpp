@@ -16,6 +16,7 @@ public:
     std::string upload_store;
     int redirectCode;
     std::string redirectUrl;
+    std::string index;
 };
 
 #endif

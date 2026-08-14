@@ -33,6 +33,7 @@ class ConfigParser
         void parseAutoindex(TokenStream &tokens, LocationConfig &location);
         void parseUploadStore(TokenStream &tokens, LocationConfig &location);
         void parseRedirect(TokenStream &tokens, LocationConfig &location);
+        void parseLocationIndex(TokenStream &tokens, LocationConfig &location);
     };
 
 #endif

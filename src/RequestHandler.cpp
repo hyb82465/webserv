@@ -70,6 +70,7 @@ std::string RequestHandler::getBoundary(const HttpRequest &request)
     }
     std::string boundary = contentType.substr(pos + key.size());
     std::string delimiter = "--" + boundary;
+    return boundary;
 }
 
 // Temporary protection

@@ -21,6 +21,7 @@ class ConfigParser
         ServerConfig parseServer(TokenStream &tokens);
         
         void parseListen(TokenStream &tokens, ServerConfig &config);
+        ListenConfig parseListenValue(const std::string &value);
         void parseRoot(TokenStream &tokens, ServerConfig &config);
         void parseIndex(TokenStream &tokens, ServerConfig &config);
         void parseClientMaxBodySize(TokenStream &tokens, ServerConfig &config);

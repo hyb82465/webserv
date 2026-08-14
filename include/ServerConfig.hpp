@@ -3,6 +3,7 @@
 
 #include <string>
 #include "LocationConfig.hpp"
+#include "ListenConfig.hpp"
 #include <vector>
 #include <map>
 
@@ -14,7 +15,7 @@ class ServerConfig
         ServerConfig(const ServerConfig &other);
         ServerConfig &operator=(const ServerConfig &other);
 
-        int port;
+        std::vector<ListenConfig> listens;
         std::string root;
         std::string index;
         size_t client_max_body_size;

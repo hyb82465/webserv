@@ -151,6 +151,14 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
             throw std::runtime_error("Unexpected token: " + token);
     }
     tokens.expect("}");
+    // apply server config to location when location no cofig.
+    for (size_t i = 0; i < config.locations.size(); ++i)
+    {
+        if (config.locations[i].root.empty())
+            config.locations[i].root = config.root;
+        if (config.locations[i].index.empty())
+            config.locations[i].index = config.index;
+    }
     return config;
 }
 void ConfigParser::parseLocationRoot(TokenStream &tokens, LocationConfig &location)
@@ -274,14 +282,16 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
         else if (token == "upload_store")
         {
             parseUploadStore(tokens, location);
+
         }
         else if (token == "return")
         {
+            		
             parseRedirect(tokens, location);
         }
         else if (token == "cgi")
         {
-            parseRedirect(tokens, location);
+            parseCgi(tokens, location);
         }
         else
             throw std::runtime_error("Unexpected token in location block: " + token);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: nonggelrj456 <nonggelrj456@student.42.f    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/04 16:44:33 by yihe              #+#    #+#             */
-/*   Updated: 2026/08/15 12:16:46 by zhma             ###   ########.fr       */
+/*   Updated: 2026/08/15 23:34:42 by nonggelrj45      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,34 +116,34 @@ static void printConfig(
             std::cout << std::endl;
 
             std::cout << "  Location: "
-                      << location.path
+                      << location.getPath()
                       << std::endl;
 
             /*
              * location root
              */
             std::cout << "    Root: "
-                      << location.root
+                      << location.getRoot()
                       << std::endl;
 
             /*
              * location index
              */
             std::cout << "    Index: "
-                      << location.index
+                      << location.getIndex()
                       << std::endl;
 
             /*
              * methods
              */
             std::cout << "    Methods:";
-
+            const std::vector<std::string> &methods = location.getMethods();
             for (size_t k = 0;
-                 k < location.methods.size();
+                 k < methods.size();
                  ++k)
             {
                 std::cout << " "
-                          << location.methods[k];
+                          << methods[k];
             }
 
             std::cout << std::endl;
@@ -152,7 +152,7 @@ static void printConfig(
              * autoindex
              */
             std::cout << "    Autoindex: "
-                      << (location.autoindex
+                      << (location.getAutoindex()
                           ? "on"
                           : "off")
                       << std::endl;
@@ -161,49 +161,34 @@ static void printConfig(
              * upload
              */
             std::cout << "    Upload store: "
-                      << location.upload_store
+                      << location.getUploadStore()
                       << std::endl;
 
             /*
              * redirect
              */
-            if (location.redirectCode != 0)
-            {
-                std::cout
-                    << "    Redirect: "
-                    << location.redirectCode
-                    << " -> "
-                    << location.redirectUrl
-                    << std::endl;
-            }
-            else
-            {
-                std::cout
-                    << "    Redirect: none"
-                    << std::endl;
-            }
-
-            /*
-             * CGI
-             */
-            std::cout << "    CGI:"
+            std::cout << "    Redirect code: "
+                      << location.getRedirectCode()
                       << std::endl;
+            std::cout << "    Redirect URL: "
+                      << location.getRedirectUrl()
+                      << std::endl;
+            
+            /*
+            * CGI
+            */
+           std::cout << "    CGI:"
+           << std::endl;
+           
+           const std::map<std::string, std::string> &cgi = location.getCgi();
+           std::map<std::string, std::string>::const_iterator it;
+           for(it = cgi.begin();it != cgi.end();++it)
+           {
+               std::cout << it->first << "-> " << it->second << std::endl; 
+           }
 
-            std::map<std::string, std::string>::const_iterator cgiIt;
 
-            for (cgiIt = location.cgi.begin();
-                 cgiIt != location.cgi.end();
-                 ++cgiIt)
-            {
-                std::cout
-                    << "      "
-                    << cgiIt->first
-                    << " -> "
-                    << cgiIt->second
-                    << std::endl;
-            }
-
-            if (location.cgi.empty())
+            if (location.getCgi().empty())
             {
                 std::cout
                     << "      none"

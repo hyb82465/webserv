@@ -253,7 +253,7 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
     LocationConfig location;
 
     tokens.expect("location");
-    location.path = tokens.consume();
+    location.setPath(tokens.consume());
     tokens.expect("{");
 
     while (tokens.hasNext() && tokens.peek() != "}")

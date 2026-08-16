@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <cstddef>
 #include <cstdio>
+#include <dirent.h>
 #include <iostream>
 
 RequestHandler::RequestHandler()
@@ -211,6 +212,49 @@ bool RequestHandler::writeFile(const std::string &path, const std::string &data)
     return true ;
 }
 
+std::string RequestHandler::generateAutoindex(const std::string &path, const std::string &requestPath)
+{
+    DIR *dir = opendir(path.c_str());
+    if (dir == NULL)
+        return "";
+    struct dirent *entry;
+    std::stringstream html;
+    html << "<html>\n";
+    html << "<body>\n";
+    html << "<h1> Index of " << requestPath << "</h1>\n";
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+        if (name == "." || name == "..")
+            continue ;
+        std::string href = requestPath;
+        if (!href.empty() && href[href.size() - 1] != '/')
+            href += "/";   
+        href += name;
+        std::string entryPath = path + name;
+        struct stat info;
+        if (stat(entryPath.c_str(), &info) == -1)
+        {
+            closedir(dir);
+            return "";
+        }   
+        if (S_ISDIR(info.st_mode))
+        {
+            href += "/";
+            name += "/";
+        }
+        html << "<a href=\""
+             << href
+             << "\">"
+             << name
+             << "</a><br>\n";
+    }
+    html << "</body>\n";
+    html << "</html>\n";
+    closedir(dir);
+    return html.str();
+}
+
 // Temporary protection
 bool RequestHandler::hasParentTraversal(const std::string &path)
 {
@@ -234,6 +278,7 @@ bool RequestHandler::hasParentTraversal(const std::string &path)
 
 HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::string &root)
 {
+    bool autoindex = true;
     // temporary protection
     if (hasParentTraversal(request.getPath()))
         return forbidden();
@@ -246,12 +291,27 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
     {
         if (!path.empty() && path[path.size() - 1] != '/')
             path += "/";
-        path += "index.html";
+        std::string indexPath = path + "index.html";
         struct stat indexInfo;
-        if (stat(path.c_str(), &indexInfo) == -1)
-            return forbidden();
+        if (stat(indexPath.c_str(), &indexInfo) == -1)
+        {
+            if (autoindex)
+            {
+                HttpResponse response;
+                response.setStatus(HTTP_OK);
+                response.setHeader("Content-Type", "text/html");
+                response.setHeader("Connection", "close");
+                response.setBody(
+                    generateAutoindex(path, request.getPath())
+                );
+                return response;
+            }
+            else
+                return forbidden();
+        }
         if (!S_ISREG(indexInfo.st_mode))
             return forbidden();
+        path = indexPath;
     }
     else if (!S_ISREG(info.st_mode))
         return forbidden();

@@ -31,6 +31,7 @@ private:
         const std::string &boundary
     );
     bool writeFile(const std::string &path, const std::string &data);
+    std::string generateAutoindex(const std::string &path, const std::string &requestPath);
 
     bool hasParentTraversal(const std::string &path);
 

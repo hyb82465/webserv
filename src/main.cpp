@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: nonggelrj456 <nonggelrj456@student.42.f    +#+  +:+       +#+        */
+/*   By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/04 16:44:33 by yihe              #+#    #+#             */
-/*   Updated: 2026/08/15 23:34:42 by nonggelrj45      ###   ########.fr       */
+/*   Updated: 2026/08/16 09:42:07 by zhma             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,39 +45,41 @@ static void printConfig(
         std::cout << "Listen:"
                   << std::endl;
 
+        const std::vector<ListenConfig> &listens =
+            server.getListens();
+
         for (size_t j = 0;
-             j < server.listens.size();
-             ++j)
+            j < listens.size();
+            ++j)
         {
-            const ListenConfig &listen =
-                server.listens[j];
+            const ListenConfig &listen = listens[j];
 
             std::cout << "  "
-                      << listen.host
-                      << ":"
-                      << listen.port
-                      << std::endl;
+                    << listen.getHost()
+                    << ":"
+                    << listen.getPort()
+                    << std::endl;
         }
 
         /*
          * server root
          */
         std::cout << "Root: "
-                  << server.root
+                  << server.getRoot()
                   << std::endl;
 
         /*
          * server index
          */
         std::cout << "Index: "
-                  << server.index
+                  << server.getIndex()
                   << std::endl;
 
         /*
          * client max body size
          */
         std::cout << "Client max body size: "
-                  << server.client_max_body_size
+                  << server.getClientMaxBodySize()
                   << std::endl;
 
         /*
@@ -87,10 +89,13 @@ static void printConfig(
                   << std::endl;
 
         std::map<int, std::string>::const_iterator errorIt;
+        
+        const std::map<int, std::string> &errorPages =
+            server.getErrorPages();
 
-        for (errorIt = server.error_pages.begin();
-             errorIt != server.error_pages.end();
-             ++errorIt)
+        for (errorIt = errorPages.begin();
+            errorIt != errorPages.end();
+            ++errorIt)
         {
             std::cout << "  "
                       << errorIt->first
@@ -102,16 +107,18 @@ static void printConfig(
         /*
          * locations
          */
+        const std::vector<LocationConfig> &locations =
+            server.getLocations();
         std::cout << "Locations: "
-                  << server.locations.size()
+                  << locations.size()
                   << std::endl;
 
         for (size_t j = 0;
-             j < server.locations.size();
+             j < locations.size();
              ++j)
         {
             const LocationConfig &location =
-                server.locations[j];
+                locations[j];
 
             std::cout << std::endl;
 

@@ -41,6 +41,7 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &other)
         index = other.index;
         cgi = other.cgi;
     }
+    return *this;
 }
 const std::string &LocationConfig::getPath() const
 {

@@ -23,19 +23,7 @@ ListenConfig ConfigParser::parseListenValue(const std::string &value)
     if (colon == std::string::npos)
     {
 		// printf("debug 1\n");
-
-        listen.host = "0.0.0.0";
-
-        char *endPtr;
-        long portValue = std::strtol(value.c_str(), &endPtr, 10);
-        if (*endPtr != '\0' )
-            throw std::runtime_error("Invalid Value: " + portValue);
-        if (portValue < 1 || portValue > 65535)
-            throw std::out_of_range("Port Value out of range");
-   
-        listen.port = static_cast<int>(portValue);
-
-        return listen;
+            throw std::runtime_error("Invalid listen address");
     }
 
     std::string host = value.substr(0, colon);
@@ -50,8 +38,8 @@ ListenConfig ConfigParser::parseListenValue(const std::string &value)
     if (portValue < 1 || portValue > 65535)
             throw std::out_of_range("Port Value out of range");
     
-    listen.host = host;
-    listen.port = static_cast<int>(portValue);
+    listen.setHost(host);
+    listen.setPort (static_cast<int>(portValue));
     return listen;
 }
 void ConfigParser::parseListen(TokenStream &tokens, ServerConfig &config)
@@ -152,13 +140,7 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
     }
     tokens.expect("}");
     // apply server config to location when location no cofig.
-    for (size_t i = 0; i < config.getLocations().size(); ++i)
-    {
-        if (config.getLocations[i].getRoot().empty())
-            config.setLocations[i].setRoot(config.getRoot());
-        if (config.locations[i].getIndex().empty())
-            config.locations[i].setIndex(config.getIndex());
-    }
+    config.applyDefaultsToLocations();
     return config;
 }
 void ConfigParser::parseLocationRoot(TokenStream &tokens, LocationConfig &location)

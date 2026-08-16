@@ -84,15 +84,26 @@ void ServerConfig::addListen(
     listens.push_back(listen);
 }
 
-void ServerConfig::addListen(
-    const ListenConfig &listen)
-{
-    listens.push_back(listen);
-}
-
 void ServerConfig::addErrorPage(
     int code,
     const std::string &path)
 {
     error_pages[code] = path;
+}
+
+void ServerConfig::addLocation(
+    const LocationConfig &location)
+{
+    locations.push_back(location);
+}
+
+void ServerConfig::applyDefaultsToLocations()
+{
+    for (size_t i = 0; i < locations.size(); ++i)
+    {
+        if (locations[i].getRoot().empty())
+            locations[i].setRoot(root);
+        if (locations[i].getIndex().empty())
+            locations[i].setIndex(index);
+    }
 }

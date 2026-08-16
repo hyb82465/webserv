@@ -41,6 +41,7 @@ class ServerConfig
         void addLocation(const LocationConfig &location);
         void addErrorPage(int code, const std::string &path);
 
+        void applyDefaultsToLocations();
 };
 
 #endif 

@@ -3,9 +3,11 @@
 
 # include "HttpRequest.hpp"
 # include "HttpResponse.hpp"
+# include "ServerConfig.hpp"
+# include "LocationConfig.hpp"
 # include <string>
 # include <map>
-#include <vector>
+# include <vector>
 
 struct MultipartPart
 {
@@ -34,6 +36,9 @@ private:
     std::string generateAutoindex(const std::string &path, const std::string &requestPath);
 
     bool hasParentTraversal(const std::string &path);
+    const LocationConfig *findLocation(
+        const ServerConfig &server,
+        const std::string &requestPath);
 
     HttpResponse handleGet(const HttpRequest &request, const std::string &root);
     HttpResponse handlePost(const HttpRequest &request, const std::string &root);

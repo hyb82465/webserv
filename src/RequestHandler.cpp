@@ -255,6 +255,34 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
     return html.str();
 }
 
+const LocationConfig *RequestHandler::findLocation(
+    const ServerConfig &server,
+    const std::string &requestPath)
+{
+    const std::vector<LocationConfig> &locations = server.getLocations();
+    const LocationConfig *best = NULL;
+    for (std::size_t i = 0; i < locations.size(); ++i)
+    {
+        const std::string &locationPath = locations[i].getPath();
+        bool match = false;
+        if (requestPath == locationPath)
+            match = true;
+        else if (locationPath == "/")
+            match = true;
+        else if (requestPath.size() > locationPath.size()
+            && requestPath.compare(0, locationPath.size(), locationPath) == 0
+            && requestPath[locationPath.size()] == '/')
+            match = true;
+        if (match)
+        {
+            if (best == NULL
+                || locationPath.size() > best->getPath().size())
+                best = &locations[i];
+        }    
+    }
+    return best;
+}
+
 // Temporary protection
 bool RequestHandler::hasParentTraversal(const std::string &path)
 {

@@ -20,6 +20,9 @@ struct MultipartPart
 class RequestHandler
 {
 private:
+    HttpResponse autoindexResponse(
+        const std::string &path,
+        const std::string &requestPath);
     HttpResponse badRequest(); // 400
     HttpResponse forbidden(); //403
     HttpResponse notFound(); // 404
@@ -34,20 +37,22 @@ private:
     );
     bool writeFile(const std::string &path, const std::string &data);
     std::string generateAutoindex(const std::string &path, const std::string &requestPath);
-
-    bool hasParentTraversal(const std::string &path);
     const LocationConfig *findLocation(
         const ServerConfig &server,
         const std::string &requestPath);
+    std::string buildPath(const LocationConfig &location, const std::string &requestPath);
+    bool hasParentTraversal(const std::string &path);
 
-    HttpResponse handleGet(const HttpRequest &request, const std::string &root);
-    HttpResponse handlePost(const HttpRequest &request, const std::string &root);
-    HttpResponse handleDelete(const HttpRequest &request, const std::string &root);
+    HttpResponse handleGet(const HttpRequest &request, const LocationConfig &location);
+    HttpResponse handlePost(const HttpRequest &request, const LocationConfig &location);
+    HttpResponse handleDelete(const HttpRequest &request, const LocationConfig &location);
 public:
     RequestHandler();
     ~RequestHandler();
 
-    HttpResponse handle(const HttpRequest &request);
+    HttpResponse handle(
+        const HttpRequest &request,
+        const ServerConfig &server);
 };
 
 #endif

@@ -14,9 +14,13 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <iostream>
+#include <stdexcept>
 
-Server::Server() : _listenFd(-1)
+Server::Server(const std::vector<ServerConfig> &configs) 
+    : _listenFd(-1), _configs(configs)
 {
+    if (_configs.empty())
+        throw std::runtime_error("No server configuration");
 }
 
 Server::~Server()
@@ -40,6 +44,20 @@ bool Server::setNonBlocking(int fd)
 
 bool Server::setupServer()
 {
+    for (std::size_t i = 0; i < _configs.size(); ++i)
+    {
+        const std::vector<ListenConfig> &listens =
+            _configs[i].getListens();
+        for (std::size_t j = 0; j < listens.size(); ++j)
+        {
+            std::cout << "server " << i
+                      << " host="
+                      << listens[j].getHost()
+                      << " port="
+                      << listens[j].getPort()
+                      << std::endl;
+        }
+    }
     // socket
     // int socket(int domain, int type, int protocol);
     _listenFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -198,7 +216,7 @@ void Server::handleRead(int fd, std::size_t &i)
     std::cout << it->second.getReadBuffer() << std::endl;
 
     RequestHandler handler;
-    HttpResponse response = handler.handle(request);
+    HttpResponse response = handler.handle(request, _configs[0]);
     it->second.setWriteBuffer(response.getResponse());
 
     _pollFds[i].events = POLLOUT;

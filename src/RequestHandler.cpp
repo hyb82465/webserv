@@ -15,6 +15,18 @@ RequestHandler::RequestHandler()
 RequestHandler::~RequestHandler()
 {}
 
+HttpResponse RequestHandler::autoindexResponse(
+    const std::string &path,
+    const std::string &requestPath)
+{
+    HttpResponse response;
+    response.setStatus(HTTP_OK);
+    response.setHeader("Content-Type", "text/html");
+    response.setHeader("Connection", "close");
+    response.setBody(generateAutoindex(path, requestPath));
+    return response;
+}
+
 HttpResponse RequestHandler::badRequest()
 {
     HttpResponse response;
@@ -264,6 +276,8 @@ const LocationConfig *RequestHandler::findLocation(
     for (std::size_t i = 0; i < locations.size(); ++i)
     {
         const std::string &locationPath = locations[i].getPath();
+        if (locationPath.empty())
+            continue ;
         bool match = false;
         if (requestPath == locationPath)
             match = true;
@@ -271,7 +285,8 @@ const LocationConfig *RequestHandler::findLocation(
             match = true;
         else if (requestPath.size() > locationPath.size()
             && requestPath.compare(0, locationPath.size(), locationPath) == 0
-            && requestPath[locationPath.size()] == '/')
+            && (requestPath[locationPath.size()] == '/'
+            || locationPath[locationPath.size() - 1] == '/'))
             match = true;
         if (match)
         {
@@ -281,6 +296,28 @@ const LocationConfig *RequestHandler::findLocation(
         }    
     }
     return best;
+}
+
+std::string RequestHandler::buildPath(const LocationConfig &location, const std::string &requestPath)
+{
+    std::string root = location.getRoot();
+    std::string locationPath = location.getPath();
+    std::string relativePath;
+
+    if (locationPath.empty())
+        return "";
+    if (locationPath == "/")
+        relativePath = requestPath;
+    else if (locationPath[locationPath.size() - 1] == '/')
+        relativePath = "/" + requestPath.substr(locationPath.size());
+    else
+        relativePath = requestPath.substr(locationPath.size());
+    if (!root.empty()
+        && root[root.size() - 1] == '/'
+        && !relativePath.empty()
+        && relativePath[0] == '/')
+        root.erase(root.size() - 1);
+    return root + relativePath;
 }
 
 // Temporary protection
@@ -304,14 +341,15 @@ bool RequestHandler::hasParentTraversal(const std::string &path)
     return false;
 }
 
-HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::string &root)
+HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig &location)
 {
-    bool autoindex = true;
+    std::string index = location.getIndex();
+    bool autoindex = location.getAutoindex();
     // temporary protection
     if (hasParentTraversal(request.getPath()))
         return forbidden();
 
-    std::string path = root + request.getPath();
+    std::string path = buildPath(location, request.getPath());
     struct stat info;
     if (stat(path.c_str(), &info) == -1)
         return notFound();
@@ -319,27 +357,29 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
     {
         if (!path.empty() && path[path.size() - 1] != '/')
             path += "/";
-        std::string indexPath = path + "index.html";
-        struct stat indexInfo;
-        if (stat(indexPath.c_str(), &indexInfo) == -1)
+        if (!index.empty())
         {
-            if (autoindex)
+            std::string indexPath = path + index;
+            struct stat indexInfo;
+            if (stat(indexPath.c_str(), &indexInfo) == 0)
             {
-                HttpResponse response;
-                response.setStatus(HTTP_OK);
-                response.setHeader("Content-Type", "text/html");
-                response.setHeader("Connection", "close");
-                response.setBody(
-                    generateAutoindex(path, request.getPath())
-                );
-                return response;
+                if (!S_ISREG(indexInfo.st_mode))
+                    return forbidden();
+                path = indexPath;
             }
             else
-                return forbidden();
+            {
+                if (!autoindex)
+                    return forbidden();
+                autoindexResponse(path, request.getPath());
+            }    
         }
-        if (!S_ISREG(indexInfo.st_mode))
-            return forbidden();
-        path = indexPath;
+        else
+        {
+            if (!autoindex)
+                return forbidden();
+            autoindexResponse(path, request.getPath());
+        }
     }
     else if (!S_ISREG(info.st_mode))
         return forbidden();
@@ -358,8 +398,9 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const std::st
     return response;
 }
 
-HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::string &root)
+HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig &location)
 {
+    std::string root = location.getRoot();
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
@@ -398,7 +439,7 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
         response.setBody("Upload successful");
         return response;
     }
-    std::string path = root + request.getPath();
+    std::string path = buildPath(location, request.getPath());
     struct stat info;
     bool existed = (stat(path.c_str(), &info) == 0);
     if (existed && !S_ISREG(info.st_mode))
@@ -416,9 +457,9 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const std::s
     return response;
 }
 
-HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const std::string &root)
+HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const LocationConfig &location)
 {
-    std::string path = root + request.getPath();
+    std::string path = buildPath(location, request.getPath());
     struct stat info;
     if (stat(path.c_str(), &info) == -1)
         return notFound();
@@ -434,14 +475,18 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const std:
     return response;
 }
 
-HttpResponse RequestHandler::handle(const HttpRequest &request)
+HttpResponse RequestHandler::handle(
+    const HttpRequest &request,
+    const ServerConfig &server)
 {
-    std::string root = "./www";
+    const LocationConfig *location = findLocation(server, request.getPath());
+    if (location == NULL)
+        return notFound();
     if (request.getMethod() == "GET")
-        return handleGet(request, root);
+        return handleGet(request, *location);
     if (request.getMethod() == "POST")
-        return handlePost(request, root);
+        return handlePost(request, *location);
     if (request.getMethod() == "DELETE")
-        return handleDelete(request, root);
+        return handleDelete(request, *location);
     return methodNotAllowed();
 }

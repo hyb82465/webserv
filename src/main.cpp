@@ -218,42 +218,41 @@ int main(int argc, char **argv)
 		return (1);
 	}
 	(void)argv;
-	// // create Config
+	// create Config
 	
-	// try
-	// {
-	// 	ConfigParser parser;
-	// 	std::vector<ServerConfig> servers;
-	// 	servers = parser.parse(argv[1]);
-	// 	//printf("debug 1\n");
-	// 	// for(size_t i = 0; i<servers.size();++i)
-	// 	// {
-	// 	// 	std::cout <<"server "<< i + 1 << std::endl;
-	// 	// 	for (size_t j = 0; j < servers[i].listens.size();++j)
-	// 	// 	{
-	// 	// 		std::cout << "Listen: " << servers[i].listens[j].host << ": " << servers[i].listens[j].port
-	// 	// 					<<std::endl;
-	// 	// 	}
+	try
+	{
+		ConfigParser parser;
+		std::vector<ServerConfig> servers;
+		servers = parser.parse(argv[1]);
+		//printf("debug 1\n");
+		// for(size_t i = 0; i<servers.size();++i)
+		// {
+		// 	std::cout <<"server "<< i + 1 << std::endl;
+		// 	for (size_t j = 0; j < servers[i].listens.size();++j)
+		// 	{
+		// 		std::cout << "Listen: " << servers[i].listens[j].host << ": " << servers[i].listens[j].port
+		// 					<<std::endl;
+		// 	}
 			
-	// 	// 	std::cout << "Root: " << servers[0].root << std::endl;
-	// 	// 	std::cout << "Index: " << servers[0].index << std::endl;
-	// 	// }
+		// 	std::cout << "Root: " << servers[0].root << std::endl;
+		// 	std::cout << "Index: " << servers[0].index << std::endl;
+		// }
 			
-	// 	 std::cout << "Configuration file parsed successfully" << std::endl;
-	// 	printConfig(servers);
-		
-		
-	// }
-	// catch (const std::exception &e)
-	// {
-	// 	std::cerr << "Error: " << e.what() << std::endl;
-	// 	return (1);
-	// }
+		// std::cout << "Configuration file parsed successfully" << std::endl;
+		// printConfig(servers);
 	
-	// std::vector<std::string> tokens;
+		Server	server(servers);
+		server.run();
+		
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Error: " << e.what() << std::endl;
+		return (1);
+	}
+	
+	std::vector<std::string> tokens;
 
-
-	Server	server;
-	server.run();
 	return (0);
 }

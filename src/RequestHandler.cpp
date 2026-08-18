@@ -480,22 +480,23 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
         bool created = false;
         for (std::size_t i = 0; i < parts.size(); ++i)
         {
-            if (parts[i].filename.empty())
-                continue ;
-            if (!isSafeFilename(parts[i].filename))
-                return badRequest();
-            std::string filePath = uploadStore;
-            if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
-                filePath += "/";
-            filePath += parts[i].filename;
-            struct stat info;
-            bool existed = (stat(filePath.c_str(), &info) == 0);
-            if (existed && !S_ISREG(info.st_mode))
-                return forbidden();
-            if (!writeFile(filePath, parts[i].data))
-                return internalServerError();
-            if (!existed)
-                created = true;
+            if (!parts[i].filename.empty())
+            {
+                if (!isSafeFilename(parts[i].filename))
+                    return badRequest();
+                std::string filePath = uploadStore;
+                if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
+                    filePath += "/";
+                filePath += parts[i].filename;
+                struct stat info;
+                bool existed = (stat(filePath.c_str(), &info) == 0);
+                if (existed && !S_ISREG(info.st_mode))
+                    return forbidden();
+                if (!writeFile(filePath, parts[i].data))
+                    return internalServerError();
+                if (!existed)
+                    created = true;
+            }
         }
         HttpResponse response;
         if (created)

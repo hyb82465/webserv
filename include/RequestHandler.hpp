@@ -49,6 +49,7 @@ private:
     std::string getRoot(const LocationConfig *location) const;
     std::string getIndex(const LocationConfig *location) const;
     bool getAutoindex(const LocationConfig *location) const;
+    bool isMethodAllowed(const LocationConfig *location, const std::string &requestMethod);
 
     bool hasParentTraversal(const std::string &path);
 

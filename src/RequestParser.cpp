@@ -36,10 +36,6 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
         return HTTP_BAD_REQUEST;
     if (request._version != "HTTP/1.1")
         return HTTP_VERSION_NOT_SUPPORTED;
-    if (request._method != "GET"
-        && request._method != "POST"
-        && request._method != "DELETE")
-        return HTTP_METHOD_NOT_ALLOWED;
     return HTTP_OK;
 }
 

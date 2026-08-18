@@ -350,6 +350,23 @@ bool RequestHandler::getAutoindex(const LocationConfig *location) const
     return false;
 }
 
+bool RequestHandler::isMethodAllowed(
+    const LocationConfig *location,
+    const std::string &requestMethod)
+{
+    if (location == NULL)
+        return true;
+    const std::vector<std::string> &methods = location->getMethods();
+    if (methods.empty())
+        return true;
+    for (std::size_t i = 0; i < methods.size(); ++i)
+    {
+        if (methods[i] == requestMethod)
+            return true;
+    }
+    return false;
+}
+
 // Temporary protection
 bool RequestHandler::hasParentTraversal(const std::string &path)
 {
@@ -508,6 +525,8 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
 HttpResponse RequestHandler::handle(const HttpRequest &request)
 {
     const LocationConfig *location = findLocation(_server, request.getPath());
+    if (!isMethodAllowed(location, request.getMethod()))
+        return methodNotAllowed();
     if (request.getMethod() == "GET")
         return handleGet(request, location);
     if (request.getMethod() == "POST")

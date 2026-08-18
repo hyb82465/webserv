@@ -215,8 +215,8 @@ void Server::handleRead(int fd, std::size_t &i)
 
     std::cout << it->second.getReadBuffer() << std::endl;
 
-    RequestHandler handler;
-    HttpResponse response = handler.handle(request, _configs[0]);
+    RequestHandler handler(_configs[0]);
+    HttpResponse response = handler.handle(request);
     it->second.setWriteBuffer(response.getResponse());
 
     _pollFds[i].events = POLLOUT;

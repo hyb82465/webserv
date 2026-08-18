@@ -9,7 +9,7 @@
 #include <dirent.h>
 #include <iostream>
 
-RequestHandler::RequestHandler()
+RequestHandler::RequestHandler(const ServerConfig &config) : _server(config)
 {}
 
 RequestHandler::~RequestHandler()
@@ -298,26 +298,56 @@ const LocationConfig *RequestHandler::findLocation(
     return best;
 }
 
-std::string RequestHandler::buildPath(const LocationConfig &location, const std::string &requestPath)
+std::string RequestHandler::buildPath(const LocationConfig *location, const std::string &requestPath)
 {
-    std::string root = location.getRoot();
-    std::string locationPath = location.getPath();
+    std::string root;
     std::string relativePath;
-
-    if (locationPath.empty())
-        return "";
-    if (locationPath == "/")
+    if (location == NULL)
+    {
+        root = _server.getRoot();
         relativePath = requestPath;
-    else if (locationPath[locationPath.size() - 1] == '/')
-        relativePath = "/" + requestPath.substr(locationPath.size());
+    }
     else
-        relativePath = requestPath.substr(locationPath.size());
+    {
+        root = location->getRoot();
+        const std::string &locationPath = location->getPath();
+        if (locationPath.empty())
+            return "";
+        if (locationPath == "/")
+            relativePath = requestPath;
+        else if (locationPath[locationPath.size() - 1] == '/')
+            relativePath = "/" + requestPath.substr(locationPath.size());
+        else
+            relativePath = requestPath.substr(locationPath.size());
+
+    }
     if (!root.empty()
         && root[root.size() - 1] == '/'
         && !relativePath.empty()
         && relativePath[0] == '/')
         root.erase(root.size() - 1);
     return root + relativePath;
+}
+
+std::string RequestHandler::getRoot(const LocationConfig *location) const
+{
+    if (location != NULL)
+        return location->getRoot();
+    return _server.getRoot();
+}
+
+std::string RequestHandler::getIndex(const LocationConfig *location) const
+{
+    if (location != NULL)
+        return location->getIndex();
+    return _server.getIndex();
+}
+
+bool RequestHandler::getAutoindex(const LocationConfig *location) const
+{
+    if (location != NULL)
+        return location->getAutoindex();
+    return false;
 }
 
 // Temporary protection
@@ -341,10 +371,10 @@ bool RequestHandler::hasParentTraversal(const std::string &path)
     return false;
 }
 
-HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig &location)
+HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig *location)
 {
-    std::string index = location.getIndex();
-    bool autoindex = location.getAutoindex();
+    std::string index = getIndex(location);
+    bool autoindex = getAutoindex(location);
     // temporary protection
     if (hasParentTraversal(request.getPath()))
         return forbidden();
@@ -398,9 +428,9 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
     return response;
 }
 
-HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig &location)
+HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig *location)
 {
-    std::string root = location.getRoot();
+    std::string root = getRoot(location);
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
@@ -457,7 +487,7 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
     return response;
 }
 
-HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const LocationConfig &location)
+HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const LocationConfig *location)
 {
     std::string path = buildPath(location, request.getPath());
     struct stat info;
@@ -475,18 +505,14 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
     return response;
 }
 
-HttpResponse RequestHandler::handle(
-    const HttpRequest &request,
-    const ServerConfig &server)
+HttpResponse RequestHandler::handle(const HttpRequest &request)
 {
-    const LocationConfig *location = findLocation(server, request.getPath());
-    if (location == NULL)
-        return notFound();
+    const LocationConfig *location = findLocation(_server, request.getPath());
     if (request.getMethod() == "GET")
-        return handleGet(request, *location);
+        return handleGet(request, location);
     if (request.getMethod() == "POST")
-        return handlePost(request, *location);
+        return handlePost(request, location);
     if (request.getMethod() == "DELETE")
-        return handleDelete(request, *location);
+        return handleDelete(request, location);
     return methodNotAllowed();
 }

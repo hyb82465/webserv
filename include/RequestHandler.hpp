@@ -20,6 +20,10 @@ struct MultipartPart
 class RequestHandler
 {
 private:
+    RequestHandler();
+
+    const ServerConfig &_server;
+
     HttpResponse autoindexResponse(
         const std::string &path,
         const std::string &requestPath);
@@ -40,19 +44,22 @@ private:
     const LocationConfig *findLocation(
         const ServerConfig &server,
         const std::string &requestPath);
-    std::string buildPath(const LocationConfig &location, const std::string &requestPath);
+    std::string buildPath(const LocationConfig *location, const std::string &requestPath);
+
+    std::string getRoot(const LocationConfig *location) const;
+    std::string getIndex(const LocationConfig *location) const;
+    bool getAutoindex(const LocationConfig *location) const;
+
     bool hasParentTraversal(const std::string &path);
 
-    HttpResponse handleGet(const HttpRequest &request, const LocationConfig &location);
-    HttpResponse handlePost(const HttpRequest &request, const LocationConfig &location);
-    HttpResponse handleDelete(const HttpRequest &request, const LocationConfig &location);
+    HttpResponse handleGet(const HttpRequest &request, const LocationConfig *location);
+    HttpResponse handlePost(const HttpRequest &request, const LocationConfig *location);
+    HttpResponse handleDelete(const HttpRequest &request, const LocationConfig *location);
 public:
-    RequestHandler();
+    RequestHandler(const ServerConfig &config);
     ~RequestHandler();
 
-    HttpResponse handle(
-        const HttpRequest &request,
-        const ServerConfig &server);
+    HttpResponse handle(const HttpRequest &request);
 };
 
 #endif

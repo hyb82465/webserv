@@ -20,9 +20,9 @@ struct MultipartPart
 class RequestHandler
 {
 private:
-    RequestHandler();
-
     const ServerConfig &_server;
+
+    RequestHandler();
 
     HttpResponse autoindexResponse(
         const std::string &path,
@@ -46,13 +46,12 @@ private:
         const ServerConfig &server,
         const std::string &requestPath);
     std::string buildPath(const LocationConfig *location, const std::string &requestPath);
-
     std::string getRoot(const LocationConfig *location) const;
     std::string getIndex(const LocationConfig *location) const;
     bool getAutoindex(const LocationConfig *location) const;
     bool isMethodAllowed(const LocationConfig *location, const std::string &requestMethod);
-
     bool hasParentTraversal(const std::string &path);
+    bool isSafeFilename(const std::string &filename);
 
     HttpResponse handleGet(const HttpRequest &request, const LocationConfig *location);
     HttpResponse handlePost(const HttpRequest &request, const LocationConfig *location);

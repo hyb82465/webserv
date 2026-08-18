@@ -377,7 +377,6 @@ bool RequestHandler::isMethodAllowed(
     return false;
 }
 
-// Temporary protection
 bool RequestHandler::hasParentTraversal(const std::string &path)
 {
     std::size_t start = 0;
@@ -398,14 +397,23 @@ bool RequestHandler::hasParentTraversal(const std::string &path)
     return false;
 }
 
+bool RequestHandler::isSafeFilename(const std::string &filename)
+{
+    if (filename.empty())
+        return false;
+    if (filename == "." || filename == "..")
+        return false;
+    if (filename.find('/') != std::string::npos)
+        return false;
+    if (filename.find('\\') != std::string::npos)
+        return false;
+    return true;
+}
+
 HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig *location)
 {
     std::string index = getIndex(location);
     bool autoindex = getAutoindex(location);
-    // temporary protection
-    if (hasParentTraversal(request.getPath()))
-        return forbidden();
-
     std::string path = buildPath(location, request.getPath());
     struct stat info;
     if (stat(path.c_str(), &info) == -1)
@@ -457,10 +465,14 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
 
 HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig *location)
 {
-    std::string root = getRoot(location);
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
+        if (location == NULL)
+            return forbidden();
+        const std::string &uploadStore = location->getUploadStore();
+        if (uploadStore.empty())
+            return forbidden();
         std::string boundary = getBoundary(request);
         if (boundary.empty())
             return badRequest();
@@ -469,11 +481,10 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
         for (std::size_t i = 0; i < parts.size(); ++i)
         {
             if (parts[i].filename.empty())
-            {
-                // not file part
                 continue ;
-            }
-            std::string filePath = root;
+            if (!isSafeFilename(parts[i].filename))
+                return badRequest();
+            std::string filePath = uploadStore;
             if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
                 filePath += "/";
             filePath += parts[i].filename;
@@ -534,7 +545,10 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
 
 HttpResponse RequestHandler::handle(const HttpRequest &request)
 {
-    const LocationConfig *location = findLocation(_server, request.getPath());
+    const std::string &requestPath = request.getPath();
+    if (hasParentTraversal(requestPath))
+        return forbidden();
+    const LocationConfig *location = findLocation(_server, requestPath);
     const std::string &requestMethod = request.getMethod();
     if (requestMethod != "GET"
         && requestMethod != "POST"

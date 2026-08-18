@@ -67,6 +67,16 @@ HttpResponse RequestHandler::methodNotAllowed()
     return response;
 }
 
+HttpResponse RequestHandler::notImplemented()
+{
+    HttpResponse response;
+    response.setStatus(HTTP_NOT_IMPLEMENTED);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("501 Not Implemented");
+    return response;
+}
+
 HttpResponse RequestHandler::internalServerError()
  {
     HttpResponse response;
@@ -525,13 +535,18 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
 HttpResponse RequestHandler::handle(const HttpRequest &request)
 {
     const LocationConfig *location = findLocation(_server, request.getPath());
-    if (!isMethodAllowed(location, request.getMethod()))
+    const std::string &requestMethod = request.getMethod();
+    if (requestMethod != "GET"
+        && requestMethod != "POST"
+        && requestMethod != "DELETE")
+        return notImplemented();
+    if (!isMethodAllowed(location, requestMethod))
         return methodNotAllowed();
-    if (request.getMethod() == "GET")
+    if (requestMethod == "GET")
         return handleGet(request, location);
-    if (request.getMethod() == "POST")
+    if (requestMethod == "POST")
         return handlePost(request, location);
-    if (request.getMethod() == "DELETE")
+    if (requestMethod == "DELETE")
         return handleDelete(request, location);
-    return methodNotAllowed();
+    return internalServerError();
 }

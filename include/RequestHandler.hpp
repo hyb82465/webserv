@@ -31,6 +31,7 @@ private:
     HttpResponse forbidden(); //403
     HttpResponse notFound(); // 404
     HttpResponse methodNotAllowed(); // 405
+    HttpResponse notImplemented(); // 501
     HttpResponse internalServerError(); // 500
 
     std::string getMimeType(const std::string &path);

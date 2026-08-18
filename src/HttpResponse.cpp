@@ -9,12 +9,16 @@ std::string HttpResponse::statusToString() const
         return "201 Created";
     else if (_status == HTTP_BAD_REQUEST)
         return "400 Bad Request";
+    else if (_status == HTTP_FORBIDDEN)
+        return "403 Forbidden";
     else if (_status == HTTP_NOT_FOUND)
         return "404 Not Found";
     else if (_status == HTTP_METHOD_NOT_ALLOWED)
         return "405 Method Not Allowed";
     else if (_status == HTTP_INTERNAL_SERVER_ERROR)
         return "500 Internal Server Error";
+    else if (_status == HTTP_NOT_IMPLEMENTED)
+        return "501 Not Implemented";
     else if (_status == HTTP_VERSION_NOT_SUPPORTED)
         return "505 HTTP Version Not Supported";
     return "500 Internal Server Error";

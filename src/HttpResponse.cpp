@@ -27,6 +27,8 @@ std::string HttpResponse::statusToString() const
             return "404 Not Found";
         case HTTP_METHOD_NOT_ALLOWED:
             return "405 Method Not Allowed";
+        case HTTP_PAYLOAD_TOO_LARGE:
+            return "413 Payload Too Large";
         case HTTP_INTERNAL_SERVER_ERROR:
             return "500 Internal Server Error";
         case HTTP_NOT_IMPLEMENTED:

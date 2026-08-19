@@ -19,12 +19,12 @@ private:
     HttpStatus parseRequestLine(const std::string &line, HttpRequest &request);
     HttpStatus parseHeaders(const std::string &headers, HttpRequest &request);
     ParseResult parseContentLengthBody(const std::string &body, HttpRequest &request);
-    ParseResult parseChunkedBody(const std::string &body, HttpRequest &request);
+    ParseResult parseChunkedBody(const std::string &body, HttpRequest &request, std::size_t maxBodySize);
 public:
     RequestParser();
     ~RequestParser();
 
-    ParseResult parse(const std::string &raw, HttpRequest &request);
+    ParseResult parse(const std::string &raw, HttpRequest &request, std::size_t maxBodySize);
 };
 
 #endif

@@ -35,8 +35,10 @@ private:
     HttpResponse forbidden(); //403
     HttpResponse notFound(); // 404
     HttpResponse methodNotAllowed(); // 405
+    HttpResponse payloadTooLarge(); // 413
     HttpResponse notImplemented(); // 501
     HttpResponse internalServerError(); // 500
+    HttpResponse versionNotSupported(); // 505
 
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
@@ -65,6 +67,7 @@ public:
     ~RequestHandler();
 
     HttpResponse handle(const HttpRequest &request);
+    HttpResponse handleError(HttpStatus status);
 };
 
 #endif

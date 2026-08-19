@@ -67,6 +67,16 @@ HttpResponse RequestHandler::methodNotAllowed()
     return response;
 }
 
+HttpResponse RequestHandler::payloadTooLarge()
+{
+    HttpResponse response;
+    response.setStatus(HTTP_PAYLOAD_TOO_LARGE);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("413 Payload Too Large");
+    return response;
+}
+
 HttpResponse RequestHandler::notImplemented()
 {
     HttpResponse response;
@@ -78,12 +88,22 @@ HttpResponse RequestHandler::notImplemented()
 }
 
 HttpResponse RequestHandler::internalServerError()
- {
+{
     HttpResponse response;
     response.setStatus(HTTP_INTERNAL_SERVER_ERROR);
     response.setHeader("Content-Type", "text/plain");
     response.setHeader("Connection", "close");
     response.setBody("500 Internal Server Error");
+    return response;
+}
+
+HttpResponse RequestHandler::versionNotSupported()
+{
+    HttpResponse response;
+    response.setStatus(HTTP_VERSION_NOT_SUPPORTED);
+    response.setHeader("Content-Type", "text/plain");
+    response.setHeader("Connection", "close");
+    response.setBody("505 Version Not Supported");
     return response;
 }
 
@@ -573,4 +593,19 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
     if (requestMethod == "DELETE")
         return handleDelete(request, location);
     return internalServerError();
+}
+
+HttpResponse RequestHandler::handleError(HttpStatus status)
+{
+    switch (status)
+    {
+        case HTTP_BAD_REQUEST:
+            return badRequest();
+        case HTTP_PAYLOAD_TOO_LARGE:
+            return payloadTooLarge();
+        case HTTP_VERSION_NOT_SUPPORTED:
+            return versionNotSupported();
+        default:
+            return internalServerError();
+    }
 }

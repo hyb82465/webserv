@@ -187,7 +187,8 @@ void Server::handleRead(int fd, std::size_t &i)
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
     HttpRequest request;
     RequestParser parser;
-    ParseResult result = parser.parse(it->second.getReadBuffer(), request);
+    std::size_t maxBodySize = _configs[0].getClientMaxBodySize();
+    ParseResult result = parser.parse(it->second.getReadBuffer(), request, maxBodySize);
     if (result == PARSE_INCOMPLETE)
     {
         std::cout << "request incomplete" << std::endl;
@@ -199,6 +200,10 @@ void Server::handleRead(int fd, std::size_t &i)
         std::cout << "parse error, status = "
                   << request.getStatus()
                   << std::endl;
+        RequestHandler handler(_configs[0]);
+        HttpResponse response = handler.handleError(request.getStatus());
+        it->second.setWriteBuffer(response.getResponse());
+        _pollFds[i].events = POLLOUT;
         ++i;
         return ;
     }

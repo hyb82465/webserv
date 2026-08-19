@@ -557,6 +557,15 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
         return notImplemented();
     if (!isMethodAllowed(location, requestMethod))
         return methodNotAllowed();
+    if (location != NULL && location->getRedirectCode() != 0)
+    {
+        HttpResponse response;
+        response.setStatus(static_cast<HttpStatus>(location->getRedirectCode()));
+        response.setHeader("Location", location->getRedirectUrl());
+        response.setHeader("Connection", "close");
+        response.setBody("");
+        return response;
+    }
     if (requestMethod == "GET")
         return handleGet(request, location);
     if (requestMethod == "POST")

@@ -22,8 +22,12 @@ class RequestHandler
 private:
     const ServerConfig &_server;
 
+    // forbidden
     RequestHandler();
+    RequestHandler(const RequestHandler &other);
+    RequestHandler &operator=(const RequestHandler &other);
 
+    // response
     HttpResponse autoindexResponse(
         const std::string &path,
         const std::string &requestPath);

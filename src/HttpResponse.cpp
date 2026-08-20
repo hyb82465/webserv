@@ -34,7 +34,7 @@ std::string HttpResponse::statusToString() const
         case HTTP_NOT_IMPLEMENTED:
             return "501 Not Implemented";
         case HTTP_VERSION_NOT_SUPPORTED:
-            return "505 HTTP Version Not Supported";
+            return "505 Version Not Supported";
         default:
             return "500 Internal Server Error";
     }

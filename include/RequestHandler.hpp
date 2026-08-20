@@ -28,6 +28,7 @@ private:
     RequestHandler &operator=(const RequestHandler &other);
 
     // response
+    HttpResponse errorResponse(HttpStatus status, const std::string &defaultBody);
     HttpResponse autoindexResponse(
         const std::string &path,
         const std::string &requestPath);
@@ -36,8 +37,8 @@ private:
     HttpResponse notFound(); // 404
     HttpResponse methodNotAllowed(); // 405
     HttpResponse payloadTooLarge(); // 413
-    HttpResponse notImplemented(); // 501
     HttpResponse internalServerError(); // 500
+    HttpResponse notImplemented(); // 501
     HttpResponse versionNotSupported(); // 505
 
     std::string getMimeType(const std::string &path);

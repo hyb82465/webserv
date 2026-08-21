@@ -7,13 +7,15 @@
 class Client
 {
 private:
+    Client();
+
     int _fd;
     std::string _readBuffer;
     std::string _writeBuffer;
     std::size_t _bytesSent;
+    std::size_t _serverIndex;
 public:
-    Client();
-    Client(int fd);
+    Client(int fd, std::size_t serverIndex);
     Client(const Client &other);
     Client &operator=(const Client &other);
     ~Client();
@@ -22,6 +24,7 @@ public:
     const std::string &getReadBuffer() const;
     const std::string &getWriteBuffer() const;
     std::size_t getBytesSent() const;
+    std::size_t getServerIndex() const;
 
     void appendToReadBuffer(const char *data, std::size_t length);
     void setWriteBuffer(const std::string &data);

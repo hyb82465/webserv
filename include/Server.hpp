@@ -10,7 +10,8 @@
 class Server
 {
 private:
-    int _listenFd;
+    std::vector<int> _listenFds;
+    std::map<int, std::size_t> _listenServerMap;
     std::map<int, Client> _clients;
     std::vector<struct pollfd> _pollFds;
 
@@ -23,32 +24,32 @@ private:
     Server(const Server &other);
     Server &operator=(const Server &other);
 
+    bool isListenFd(int fd) const;
     bool setNonBlocking(int fd);
-    bool setupServer();
+    int setupListenSocket(const ListenConfig &listenConfig);
     void removeClient(int fd, std::size_t i);
-    void acceptClient();
+    void acceptClient(int listenFd);
     void handleRead(int fd, std::size_t &i);
     void handleWrite(int fd, std::size_t &i);
 
-    void startCgi(int clientFd, const HttpRequest &request,
-        const LocationConfig &location, const std::string &executable);
-    void handleCgiWrite(int fd, std::size_t &i);
-    void handleCgiRead(int fd, std::size_t &i);
-    CgiHandler *getCgiByFd(int fd);
-    void addCgi(CgiHandler *cgi);
-    void removeCgi(CgiHandler *cgi);
-    void finishCgi(CgiHandler *cgi);
-    void removePollFd(int fd);
-    void addCgiPollFds(CgiHandler *cgi);
-    void checkCgiChildren();
+    // void startCgi(int clientFd, const HttpRequest &request,
+    //     const LocationConfig &location, const std::string &executable);
+    // void handleCgiWrite(int fd, std::size_t &i);
+    // void handleCgiRead(int fd, std::size_t &i);
+    // CgiHandler *getCgiByFd(int fd);
+    // void addCgi(CgiHandler *cgi);
+    // void removeCgi(CgiHandler *cgi);
+    // void finishCgi(CgiHandler *cgi);
+    // void removePollFd(int fd);
+    // void addCgiPollFds(CgiHandler *cgi);
+    // void checkCgiChildren();
 
     const LocationConfig *findLocation(const std::string &path, const ServerConfig &config) const;
-    std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
-    std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
+    // std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
+    // std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
 
-
-    std::string buildCgiResponse(const std::string &output) const;
-    std::string toString(std::size_t value) const;
+    // std::string buildCgiResponse(const std::string &output) const;
+    // std::string toString(std::size_t value) const;
 
 public:
     Server(const std::vector<ServerConfig> &_configs);

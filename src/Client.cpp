@@ -1,16 +1,15 @@
 #include "Client.hpp"
 
-Client::Client() : _fd(-1), _readBuffer(""), _writeBuffer(""), _bytesSent(0)
-{}
-
-Client::Client(int fd) : _fd(fd), _readBuffer(""), _writeBuffer(""), _bytesSent(0)
+Client::Client(int fd, std::size_t serverIndex)
+    : _fd(fd), _readBuffer(""), _writeBuffer(""), _bytesSent(0), _serverIndex(serverIndex)
 {}
 
 Client::Client(const Client &other)
     : _fd(other._fd),
       _readBuffer(other._readBuffer),
       _writeBuffer(other._writeBuffer),
-      _bytesSent(other._bytesSent)
+      _bytesSent(other._bytesSent),
+      _serverIndex(other._serverIndex)
 {}
 
 Client &Client::operator=(const Client &other)
@@ -21,6 +20,7 @@ Client &Client::operator=(const Client &other)
         _readBuffer = other._readBuffer;
         _writeBuffer = other._writeBuffer;
         _bytesSent = other._bytesSent;
+        _serverIndex = other._serverIndex;
     }
     return *this;
 }
@@ -46,6 +46,11 @@ const std::string &Client::getWriteBuffer() const
 std::size_t Client::getBytesSent() const
 {
     return _bytesSent;
+}
+
+std::size_t Client::getServerIndex() const
+{
+    return _serverIndex;
 }
 
 void Client::appendToReadBuffer(const char *data, std::size_t length)

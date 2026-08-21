@@ -25,7 +25,7 @@ private:
     std::string _scriptPath;
 
     std::string _requestBody;
-    std::string _bodyOffset;
+    std::size_t _bodyOffset;
 
     std::string _output;
 
@@ -64,17 +64,11 @@ public:
 
     bool isStdinOpen() const;
     bool isStdoutOpen() const;
- 
+
+    bool waitForChild();
+    
     const std::string &getOutput() const;
 };
-
-CgiHandler::CgiHandler(/* args */)
-{
-}
-
-CgiHandler::~CgiHandler()
-{
-}
 
 
 #endif

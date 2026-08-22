@@ -3,6 +3,7 @@
 #include "RequestParser.hpp"
 #include "HttpResponse.hpp"
 #include "RequestHandler.hpp"
+#include "Signal.hpp"
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -43,6 +44,7 @@ Server::~Server()
         if (_pollFds[i].fd != -1)
             close(_pollFds[i].fd);
     }
+    std::cout << "Server destructor called" << std::endl;
 }
 
 bool Server::isListenFd(int fd) const
@@ -755,13 +757,15 @@ void Server::run()
         std::cerr << "listen socket failed" << std::endl;
         return ;
     }
-    while (true)
+    while (g_running)
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
         int readyCount = poll(&_pollFds[0], _pollFds.size(), -1);
         if (readyCount == -1)
         {
+            if (!g_running)
+                break ;
             std::cerr << "poll failed" << std::endl;
             return ;
         }

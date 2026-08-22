@@ -15,8 +15,17 @@
 #include "ServerConfig.hpp"
 #include "TokenStream.hpp"
 #include "Tokenizer.hpp"
+#include "Signal.hpp"
 
 #include <iostream>
+
+volatile sig_atomic_t g_running = 1;
+
+void handleSignal(int signal)
+{
+	(void)signal;
+	g_running = 0;
+}
 
 // static void printConfig(
 //     const std::vector<ServerConfig> &servers)
@@ -219,6 +228,7 @@ int main(int argc, char **argv)
 	}
 	try
 	{
+		std::signal(SIGINT, handleSignal);
 		ConfigParser parser;
 		std::vector<ServerConfig> servers;
 		servers = parser.parse(argv[1]);

@@ -22,8 +22,13 @@ class RequestHandler
 private:
     const ServerConfig &_server;
 
+    // forbidden
     RequestHandler();
+    RequestHandler(const RequestHandler &other);
+    RequestHandler &operator=(const RequestHandler &other);
 
+    // response
+    HttpResponse errorResponse(HttpStatus status, const std::string &defaultBody);
     HttpResponse autoindexResponse(
         const std::string &path,
         const std::string &requestPath);
@@ -31,8 +36,10 @@ private:
     HttpResponse forbidden(); //403
     HttpResponse notFound(); // 404
     HttpResponse methodNotAllowed(); // 405
-    HttpResponse notImplemented(); // 501
+    HttpResponse payloadTooLarge(); // 413
     HttpResponse internalServerError(); // 500
+    HttpResponse notImplemented(); // 501
+    HttpResponse versionNotSupported(); // 505
 
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
@@ -61,6 +68,7 @@ public:
     ~RequestHandler();
 
     HttpResponse handle(const HttpRequest &request);
+    HttpResponse handleError(HttpStatus status);
 };
 
 #endif

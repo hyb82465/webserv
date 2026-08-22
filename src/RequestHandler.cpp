@@ -15,6 +15,41 @@ RequestHandler::RequestHandler(const ServerConfig &config) : _server(config)
 RequestHandler::~RequestHandler()
 {}
 
+HttpResponse RequestHandler::errorResponse(
+    HttpStatus status,
+    const std::string &defaultBody)
+{
+    HttpResponse response;
+    const std::map<int, std::string> &errorPages =
+        _server.getErrorPages();
+    std::map<int, std::string>::const_iterator it =
+        errorPages.find(static_cast<int>(status));
+    if (it != errorPages.end())
+    {
+        std::ifstream file(it->second.c_str());
+        if (!file.is_open())
+        {
+            response.setHeader("Content-Type", "text/plain");
+            response.setBody(defaultBody);
+        }
+        else
+        {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            response.setHeader("Content-Type", "text/html");
+            response.setBody(buffer.str());
+        }
+    }
+    else
+    {
+        response.setHeader("Content-Type", "text/plain");
+        response.setBody(defaultBody);
+    }
+    response.setStatus(status);
+    response.setHeader("Connection", "close");
+    return response;
+}
+
 HttpResponse RequestHandler::autoindexResponse(
     const std::string &path,
     const std::string &requestPath)
@@ -29,62 +64,66 @@ HttpResponse RequestHandler::autoindexResponse(
 
 HttpResponse RequestHandler::badRequest()
 {
-    HttpResponse response;
-    response.setStatus(HTTP_BAD_REQUEST);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("400 Bad Request");
-    return response;
+    return errorResponse(
+        HTTP_BAD_REQUEST,
+        "400 Bad Request"
+    );
 }
 
 HttpResponse RequestHandler::forbidden()
 {
-    HttpResponse response;
-    response.setStatus(HTTP_FORBIDDEN);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("403 Forbidden");
-    return response;
+    return errorResponse(
+        HTTP_FORBIDDEN,
+        "403 Forbidden"
+    );
 }
 
 HttpResponse RequestHandler::notFound()
 {
-    HttpResponse response;
-    response.setStatus(HTTP_NOT_FOUND);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("404 Not Found");
-    return response;  
+    return errorResponse(
+        HTTP_NOT_FOUND,
+        "404 Not Found"
+    );
 }
 
 HttpResponse RequestHandler::methodNotAllowed()
 {
-    HttpResponse response;
-    response.setStatus(HTTP_METHOD_NOT_ALLOWED);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("405 Method Not Allowed");
-    return response;
+    return errorResponse(
+        HTTP_METHOD_NOT_ALLOWED,
+        "405 Method Not Allowed"
+    );
+}
+
+HttpResponse RequestHandler::payloadTooLarge()
+{
+    return errorResponse(
+        HTTP_PAYLOAD_TOO_LARGE,
+        "413 Payload Too Large"
+    );
+}
+
+HttpResponse RequestHandler::internalServerError()
+{
+    return errorResponse(
+        HTTP_INTERNAL_SERVER_ERROR,
+        "500 Internal Server Error"
+    );
 }
 
 HttpResponse RequestHandler::notImplemented()
 {
-    HttpResponse response;
-    response.setStatus(HTTP_NOT_IMPLEMENTED);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("501 Not Implemented");
-    return response;
+    return errorResponse(
+        HTTP_NOT_IMPLEMENTED,
+        "501 Not Implemented"
+    );
 }
 
-HttpResponse RequestHandler::internalServerError()
- {
-    HttpResponse response;
-    response.setStatus(HTTP_INTERNAL_SERVER_ERROR);
-    response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
-    response.setBody("500 Internal Server Error");
-    return response;
+HttpResponse RequestHandler::versionNotSupported()
+{
+    return errorResponse(
+        HTTP_VERSION_NOT_SUPPORTED,
+        "505 Version Not Supported"
+    );
 }
 
 std::string RequestHandler::getMimeType(const std::string &path)
@@ -480,22 +519,23 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
         bool created = false;
         for (std::size_t i = 0; i < parts.size(); ++i)
         {
-            if (parts[i].filename.empty())
-                continue ;
-            if (!isSafeFilename(parts[i].filename))
-                return badRequest();
-            std::string filePath = uploadStore;
-            if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
-                filePath += "/";
-            filePath += parts[i].filename;
-            struct stat info;
-            bool existed = (stat(filePath.c_str(), &info) == 0);
-            if (existed && !S_ISREG(info.st_mode))
-                return forbidden();
-            if (!writeFile(filePath, parts[i].data))
-                return internalServerError();
-            if (!existed)
-                created = true;
+            if (!parts[i].filename.empty())
+            {
+                if (!isSafeFilename(parts[i].filename))
+                    return badRequest();
+                std::string filePath = uploadStore;
+                if (!filePath.empty() && filePath[filePath.size() - 1] != '/')
+                    filePath += "/";
+                filePath += parts[i].filename;
+                struct stat info;
+                bool existed = (stat(filePath.c_str(), &info) == 0);
+                if (existed && !S_ISREG(info.st_mode))
+                    return forbidden();
+                if (!writeFile(filePath, parts[i].data))
+                    return internalServerError();
+                if (!existed)
+                    created = true;
+            }
         }
         HttpResponse response;
         if (created)
@@ -556,6 +596,15 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
         return notImplemented();
     if (!isMethodAllowed(location, requestMethod))
         return methodNotAllowed();
+    if (location != NULL && location->getRedirectCode() != 0)
+    {
+        HttpResponse response;
+        response.setStatus(static_cast<HttpStatus>(location->getRedirectCode()));
+        response.setHeader("Location", location->getRedirectUrl());
+        response.setHeader("Connection", "close");
+        response.setBody("");
+        return response;
+    }
     if (requestMethod == "GET")
         return handleGet(request, location);
     if (requestMethod == "POST")
@@ -563,4 +612,19 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
     if (requestMethod == "DELETE")
         return handleDelete(request, location);
     return internalServerError();
+}
+
+HttpResponse RequestHandler::handleError(HttpStatus status)
+{
+    switch (status)
+    {
+        case HTTP_BAD_REQUEST:
+            return badRequest();
+        case HTTP_PAYLOAD_TOO_LARGE:
+            return payloadTooLarge();
+        case HTTP_VERSION_NOT_SUPPORTED:
+            return versionNotSupported();
+        default:
+            return internalServerError();
+    }
 }

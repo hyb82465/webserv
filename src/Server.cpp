@@ -4,6 +4,7 @@
 #include "HttpResponse.hpp"
 #include "RequestHandler.hpp"
 #include <sys/socket.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <utility>
@@ -18,7 +19,7 @@
 #include <sstream>
 
 Server::Server(const std::vector<ServerConfig> &configs) 
-    : _listenFd(-1), _clients(), _cgiFds(), _pollFds(), _configs(configs)
+    : _configs(configs)
 {
     if (_configs.empty())
         throw std::runtime_error("No server configuration");
@@ -26,22 +27,32 @@ Server::Server(const std::vector<ServerConfig> &configs)
 
 Server::~Server()
 {
-    for (std::vector<CgiHandler *>::iterator it =
-             _cgiHandlers.begin();
-         it != _cgiHandlers.end();
-         ++it)
-    {
-        delete *it;
-    }
+    // for (std::vector<CgiHandler *>::iterator it =
+    //          _cgiHandlers.begin();
+    //      it != _cgiHandlers.end();
+    //      ++it)
+    // {
+    //     delete *it;
+    // }
 
-    _cgiHandlers.clear();
+    // _cgiHandlers.clear();
 
-    _cgiFds.clear();
+    // _cgiFds.clear();
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd != -1)
             close(_pollFds[i].fd);
     }
+}
+
+bool Server::isListenFd(int fd) const
+{
+    for (std::size_t i = 0; i < _listenFds.size(); ++i)
+    {
+        if (_listenFds[i] == fd)
+            return true;
+    }
+    return false;
 }
 
 bool Server::setNonBlocking(int fd)
@@ -54,71 +65,78 @@ bool Server::setNonBlocking(int fd)
     return true;
 }
 
-bool Server::setupServer()
+int Server::setupListenSocket(const ListenConfig &listenConfig)
 {
-    for (std::size_t i = 0; i < _configs.size(); ++i)
-    {
-        const std::vector<ListenConfig> &listens =
-            _configs[i].getListens();
-        for (std::size_t j = 0; j < listens.size(); ++j)
-        {
-            std::cout << "server " << i
-                      << " host="
-                      << listens[j].getHost()
-                      << " port="
-                      << listens[j].getPort()
-                      << std::endl;
-        }
-    }
     // socket
     // int socket(int domain, int type, int protocol);
-    _listenFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (_listenFd == -1)
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd == -1)
     {
         std::cerr << "socket failed" << std::endl;
-        return false;
+        return -1;
     }
-    struct pollfd listenPollFd;
-    listenPollFd.fd = _listenFd;
-    listenPollFd.events = POLLIN;
-    listenPollFd.revents = 0;
-    _pollFds.push_back(listenPollFd);
-    std::cout << "socket created, fd = " << _listenFd << std::endl;
     
     // non-blocking
-    if (!setNonBlocking(_listenFd))
+    if (!setNonBlocking(fd))
     {
         std::cerr << "failed to set listen socket non-blocking" << std::endl;
-        return false;
+        close(fd);
+        return -1;
     }
 
     // bind
     /* int bind(int socketFd,
                 const struct sockaddr *address,
-                socklen_t addressLength); */
-    struct sockaddr_in addr;
-    std::memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(8080);
-    if (bind(
-            _listenFd,
-            reinterpret_cast<struct sockaddr *>(&addr),
-            sizeof(addr)
-        ) == -1)
+                socklen_t addressLength);
+    */
+    struct addrinfo hints;
+    struct addrinfo *result = NULL;
+    std::memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_STREAM; // TCP
+    hints.ai_flags = AI_PASSIVE; // server bind() address
+
+    std::stringstream ss;
+    ss << listenConfig.getPort();
+    std::string port = ss.str();
+    std::string host = listenConfig.getHost();
+    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &result) != 0)
+    {
+        std::cerr << "getaddrinfo failed" << std::endl;
+        close(fd);
+        return -1;
+    }
+    if (bind(fd, result->ai_addr, result->ai_addrlen) == -1)
     {
         std::cerr << "bind failed" << std::endl;
-        return false;
+        freeaddrinfo(result);
+        close(fd);
+        return -1;
     }
+    freeaddrinfo(result);
 
     // listen
     // int listen(int socketFd, int backlog);
-    if (listen(_listenFd, SOMAXCONN) == -1)
+    if (listen(fd, SOMAXCONN) == -1)
     {
         std::cerr << "listen failed" << std::endl;
-        return false;
+        close(fd);
+        return -1;
     }
-    return true;
+
+    _listenFds.push_back(fd);
+
+    struct pollfd listenPollFd;
+    listenPollFd.fd = fd;
+    listenPollFd.events = POLLIN;
+    listenPollFd.revents = 0;
+    _pollFds.push_back(listenPollFd);
+
+    std::cout << "listening on "
+              << host << ":" << port
+              << ", fd = " << fd << std::endl;
+
+    return fd;
 }
 
 void Server::removeClient(int fd, std::size_t i)
@@ -128,7 +146,7 @@ void Server::removeClient(int fd, std::size_t i)
     _pollFds.erase(_pollFds.begin() + i);
 }
 
-void Server::acceptClient()
+void Server::acceptClient(int listenFd)
 {
     // accept
     /* int accept(int socketFd,
@@ -142,11 +160,10 @@ void Server::acceptClient()
     //     reinterpret_cast<struct sockaddr *>(&clientAddr),
     //     &clientAddrLen
     // );
-    int clientFd = accept(_listenFd, NULL, NULL);
+    int clientFd = accept(listenFd, NULL, NULL);
     if (clientFd == -1)
     {
-        if (errno != EAGAIN && errno != EWOULDBLOCK)
-            std::cerr << "accept failed" << std::endl;
+        std::cerr << "accept failed" << std::endl;
         return ;
     }
 
@@ -164,8 +181,16 @@ void Server::acceptClient()
     clientPollFd.revents = 0;
 
     _pollFds.push_back(clientPollFd);
-    _clients.insert(std::make_pair(clientFd, Client(clientFd)));
-     std::cout << "client connected, fd = " << clientFd << std::endl;
+    std::map<int, std::size_t>::const_iterator it
+        = _listenServerMap.find(listenFd);
+    if (it == _listenServerMap.end())
+    {
+        std::cerr << "listen fd has no server config" << std::endl;
+        return ;
+    }
+    std::size_t serverIndex = it->second;
+    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex)));
+    std::cout << "client connected, fd = " << clientFd << std::endl;
 }
 
 void Server::handleRead(int fd, std::size_t &i)
@@ -197,9 +222,18 @@ void Server::handleRead(int fd, std::size_t &i)
         return ;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
+    std::size_t serverIndex = it->second.getServerIndex();
+    if (serverIndex >= _configs.size())
+    {
+        std::cerr << "invalid server index" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    const ServerConfig &config = _configs[serverIndex];
     HttpRequest request;
     RequestParser parser;
-    ParseResult result = parser.parse(it->second.getReadBuffer(), request);
+    std::size_t maxBodySize = config.getClientMaxBodySize();
+    ParseResult result = parser.parse(it->second.getReadBuffer(), request, maxBodySize);
     if (result == PARSE_INCOMPLETE)
     {
         std::cout << "request incomplete" << std::endl;
@@ -211,6 +245,10 @@ void Server::handleRead(int fd, std::size_t &i)
         std::cout << "parse error, status = "
                   << request.getStatus()
                   << std::endl;
+        RequestHandler handler(config);
+        HttpResponse response = handler.handleError(request.getStatus());
+        it->second.setWriteBuffer(response.getResponse());
+        _pollFds[i].events = POLLOUT;
         ++i;
         return ;
     }
@@ -227,7 +265,7 @@ void Server::handleRead(int fd, std::size_t &i)
 
     std::cout << it->second.getReadBuffer() << std::endl;
 
-    RequestHandler handler(_configs[0]);
+    RequestHandler handler(config);
     HttpResponse response = handler.handle(request);
     it->second.setWriteBuffer(response.getResponse());
 
@@ -272,263 +310,263 @@ void Server::handleWrite(int fd, std::size_t &i)
     ++i;
 }
 
-void Server::startCgi(int clientFd, const HttpRequest &request,
-    const LocationConfig &location, const std::string &executable)
-{
-    std::string scriptPath = buildCgiScriptPath(request.getPath(), location);
+// void Server::startCgi(int clientFd, const HttpRequest &request,
+//     const LocationConfig &location, const std::string &executable)
+// {
+//     std::string scriptPath = buildCgiScriptPath(request.getPath(), location);
 
-        CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
-        try
-        {
-            cgi->start(request);
-        }
-        catch (...)
-        {
-            delete cgi;
-            throw;
-        }
+//         CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
+//         try
+//         {
+//             cgi->start(request);
+//         }
+//         catch (...)
+//         {
+//             delete cgi;
+//             throw;
+//         }
 
-        addCgi(cgi);
-        addCgiPollFds(cgi);
-}
-void Server::handleCgiWrite(int fd, std::size_t &i)
-{
-    CgiHandler *cgi = getCgiByFd(fd);
+//         addCgi(cgi);
+//         addCgiPollFds(cgi);
+// }
+// void Server::handleCgiWrite(int fd, std::size_t &i)
+// {
+//     CgiHandler *cgi = getCgiByFd(fd);
 
-    if (cgi == NULL)
-    {
-        removePollFd(fd);
-        return;
-    }
+//     if (cgi == NULL)
+//     {
+//         removePollFd(fd);
+//         return;
+//     }
 
-    cgi->writeBody();
+//     cgi->writeBody();
 
-    // Request body completely written.CgiHandler already closed stdin.
+//     // Request body completely written.CgiHandler already closed stdin.
 
-    if (!cgi->isStdinOpen())
-    {
-        _cgiFds.erase(fd);
-        removePollFd(fd);
-        //do NOT delete CGI here. stdout is still needed.
-        return;
-    }
+//     if (!cgi->isStdinOpen())
+//     {
+//         _cgiFds.erase(fd);
+//         removePollFd(fd);
+//         //do NOT delete CGI here. stdout is still needed.
+//         return;
+//     }
 
-    ++i;
-}
+//     ++i;
+// }
 
-void Server::handleCgiRead(int fd, std::size_t &i)
-{
-    CgiHandler *cgi = getCgiByFd(fd);
+// void Server::handleCgiRead(int fd, std::size_t &i)
+// {
+//     CgiHandler *cgi = getCgiByFd(fd);
 
-    if (cgi == NULL)
-    {
-        removePollFd(fd);
-        return;
-    }
+//     if (cgi == NULL)
+//     {
+//         removePollFd(fd);
+//         return;
+//     }
 
-    cgi->readOutput();
+//     cgi->readOutput();
 
-    if (!cgi->isStdoutOpen())
-    {
-        _cgiFds.erase(fd);
-        removePollFd(fd);
+//     if (!cgi->isStdoutOpen())
+//     {
+//         _cgiFds.erase(fd);
+//         removePollFd(fd);
 
-      // stdout EOF doesn't necessarily mean waitpid() already succeeded.
-        if (cgi->waitForChild())
-        {
-            finishCgi(cgi);
-        }
+//       // stdout EOF doesn't necessarily mean waitpid() already succeeded.
+//         if (cgi->waitForChild())
+//         {
+//             finishCgi(cgi);
+//         }
 
-        return;
-    }
+//         return;
+//     }
 
-    ++i;
-}
-CgiHandler *Server::getCgiByFd(int fd)
-{
-     std::map<int, CgiHandler *>::iterator it =
-        _cgiFds.find(fd);
+//     ++i;
+// }
+// CgiHandler *Server::getCgiByFd(int fd)
+// {
+//      std::map<int, CgiHandler *>::iterator it =
+//         _cgiFds.find(fd);
 
-    if (it == _cgiFds.end())
-        return NULL;
+//     if (it == _cgiFds.end())
+//         return NULL;
 
-    return it->second;
-}
+//     return it->second;
+// }
 
-void Server::addCgi(CgiHandler *cgi)
-{
-    if (cgi == NULL)
-        return;
-    _cgiHandlers.push_back(cgi);
+// void Server::addCgi(CgiHandler *cgi)
+// {
+//     if (cgi == NULL)
+//         return;
+//     _cgiHandlers.push_back(cgi);
 
-    if (cgi->getStdinFd() != -1)
-    {
-        _cgiFds[cgi->getStdinFd()] = cgi;
-    }
+//     if (cgi->getStdinFd() != -1)
+//     {
+//         _cgiFds[cgi->getStdinFd()] = cgi;
+//     }
 
-    if (cgi->getStdoutFd() != -1)
-    {
-        _cgiFds[cgi->getStdoutFd()] = cgi;
-    }
-}
+//     if (cgi->getStdoutFd() != -1)
+//     {
+//         _cgiFds[cgi->getStdoutFd()] = cgi;
+//     }
+// }
 
-void Server::removeCgi(CgiHandler *cgi)
-{
-    if (cgi == NULL)
-        return;
+// void Server::removeCgi(CgiHandler *cgi)
+// {
+//     if (cgi == NULL)
+//         return;
 
-    int stdinFd =
-        cgi->getStdinFd();
+//     int stdinFd =
+//         cgi->getStdinFd();
 
-    int stdoutFd =
-        cgi->getStdoutFd();
+//     int stdoutFd =
+//         cgi->getStdoutFd();
 
-    if (stdinFd != -1)
-    {
-        _cgiFds.erase(stdinFd);
-        removePollFd(stdinFd);
-    }
+//     if (stdinFd != -1)
+//     {
+//         _cgiFds.erase(stdinFd);
+//         removePollFd(stdinFd);
+//     }
 
-    if (stdoutFd != -1)
-    {
-        _cgiFds.erase(stdoutFd);
-        removePollFd(stdoutFd);
-    }
+//     if (stdoutFd != -1)
+//     {
+//         _cgiFds.erase(stdoutFd);
+//         removePollFd(stdoutFd);
+//     }
 
-    for (std::vector<CgiHandler *>::iterator it = _cgiHandlers.begin();
-         it != _cgiHandlers.end(); ++it)
-    {
-        if (*it == cgi)
-        {
-            delete *it;
+//     for (std::vector<CgiHandler *>::iterator it = _cgiHandlers.begin();
+//          it != _cgiHandlers.end(); ++it)
+//     {
+//         if (*it == cgi)
+//         {
+//             delete *it;
 
-            _cgiHandlers.erase(it);
+//             _cgiHandlers.erase(it);
 
-            return;
-        }
-    }
-}
-void Server::finishCgi(CgiHandler *cgi)
-{
-    if (cgi == NULL)
-        return;
+//             return;
+//         }
+//     }
+// }
+// void Server::finishCgi(CgiHandler *cgi)
+// {
+//     if (cgi == NULL)
+//         return;
 
-    int clientFd = cgi->getClientFd();
+//     int clientFd = cgi->getClientFd();
 
-    std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
+//     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
 
-    /*
-     * Client disappeared while CGI
-     * was running.
-     */
-    if (clientIt == _clients.end())
-    {
-        removeCgi(cgi);
-        return;
-    }
+//     /*
+//      * Client disappeared while CGI
+//      * was running.
+//      */
+//     if (clientIt == _clients.end())
+//     {
+//         removeCgi(cgi);
+//         return;
+//     }
 
-    /*
-     * CGI output
-     *
-     * CGI headers/body
-     *       ↓
-     * HTTP response
-     */
-    std::string response = buildCgiResponse(cgi->getOutput());
+//     /*
+//      * CGI output
+//      *
+//      * CGI headers/body
+//      *       ↓
+//      * HTTP response
+//      */
+//     std::string response = buildCgiResponse(cgi->getOutput());
 
-    clientIt->second.setWriteBuffer(response);
+//     clientIt->second.setWriteBuffer(response);
 
-    /*
-     * Client now waits for POLLOUT.
-     */
-    for (std::size_t i = 0; i < _pollFds.size(); ++i)
-    {
-        if (_pollFds[i].fd == clientFd)
-        {
-            _pollFds[i].events = POLLOUT;
+//     /*
+//      * Client now waits for POLLOUT.
+//      */
+//     for (std::size_t i = 0; i < _pollFds.size(); ++i)
+//     {
+//         if (_pollFds[i].fd == clientFd)
+//         {
+//             _pollFds[i].events = POLLOUT;
 
-            break;
-        }
-    }
+//             break;
+//         }
+//     }
 
-    /*
-     * Now CGI is completely finished.
-     */
-    removeCgi(cgi);
-}
-void Server::removePollFd(int fd)
-{
-    for (std::size_t i = 0;
-         i < _pollFds.size();
-         ++i)
-    {
-        if (_pollFds[i].fd == fd)
-        {
-            _pollFds.erase(
-                _pollFds.begin() + i);
-            return;
-        }
-    }
-}
-void Server::addCgiPollFds(CgiHandler *cgi)
-{
-if (cgi == NULL)
-        return;
+//     /*
+//      * Now CGI is completely finished.
+//      */
+//     removeCgi(cgi);
+// }
+// void Server::removePollFd(int fd)
+// {
+//     for (std::size_t i = 0;
+//          i < _pollFds.size();
+//          ++i)
+//     {
+//         if (_pollFds[i].fd == fd)
+//         {
+//             _pollFds.erase(
+//                 _pollFds.begin() + i);
+//             return;
+//         }
+//     }
+// }
+// void Server::addCgiPollFds(CgiHandler *cgi)
+// {
+// if (cgi == NULL)
+//         return;
 
-    if (cgi->getStdinFd() != -1)
-    {
-        struct pollfd stdinPoll;
+//     if (cgi->getStdinFd() != -1)
+//     {
+//         struct pollfd stdinPoll;
 
-        stdinPoll.fd =
-            cgi->getStdinFd();
+//         stdinPoll.fd =
+//             cgi->getStdinFd();
 
-        stdinPoll.events =
-            POLLOUT;
+//         stdinPoll.events =
+//             POLLOUT;
 
-        stdinPoll.revents = 0;
+//         stdinPoll.revents = 0;
 
-        _pollFds.push_back(
-            stdinPoll);
-    }
+//         _pollFds.push_back(
+//             stdinPoll);
+//     }
 
-    if (cgi->getStdoutFd() != -1)
-    {
-        struct pollfd stdoutPoll;
+//     if (cgi->getStdoutFd() != -1)
+//     {
+//         struct pollfd stdoutPoll;
 
-        stdoutPoll.fd =
-            cgi->getStdoutFd();
+//         stdoutPoll.fd =
+//             cgi->getStdoutFd();
 
-        stdoutPoll.events =
-            POLLIN;
+//         stdoutPoll.events =
+//             POLLIN;
 
-        stdoutPoll.revents = 0;
+//         stdoutPoll.revents = 0;
 
-        _pollFds.push_back(
-            stdoutPoll);
-    }
-}
+//         _pollFds.push_back(
+//             stdoutPoll);
+//     }
+// }
 
-void Server::checkCgiChildren()
-{
-    for (std::size_t i = 0;
-         i < _cgiHandlers.size();)
-    {
-        CgiHandler *cgi =
-            _cgiHandlers[i];
+// void Server::checkCgiChildren()
+// {
+//     for (std::size_t i = 0;
+//          i < _cgiHandlers.size();)
+//     {
+//         CgiHandler *cgi =
+//             _cgiHandlers[i];
 
-        if (!cgi->isStdoutOpen())
-        {
-            if (cgi->waitForChild())
-            {
-                finishCgi(cgi);
-                 //finishCgi() will remove the CGI from _cgiHandlers. Don't increment i.
-                continue;
-            }
-        }
+//         if (!cgi->isStdoutOpen())
+//         {
+//             if (cgi->waitForChild())
+//             {
+//                 finishCgi(cgi);
+//                  //finishCgi() will remove the CGI from _cgiHandlers. Don't increment i.
+//                 continue;
+//             }
+//         }
 
-        ++i;
-    }
-}
+//         ++i;
+//     }
+// }
 
 const LocationConfig *Server::findLocation(const std::string &path, const ServerConfig &config) const
 {
@@ -580,121 +618,143 @@ const LocationConfig *Server::findLocation(const std::string &path, const Server
     return best;
 }
 
-std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const
-{
-    std::string::size_type pos = path.find_last_of('.');
+// std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const
+// {
+//     std::string::size_type pos = path.find_last_of('.');
 
-    if (pos == std::string::npos)
-        return "";
+//     if (pos == std::string::npos)
+//         return "";
 
-    std::string extension = path.substr(pos);
+//     std::string extension = path.substr(pos);
 
-    const std::map<std::string, std::string> &cgi = location.getCgi();
+//     const std::map<std::string, std::string> &cgi = location.getCgi();
 
-    std::map<std::string, std::string>::const_iterator it = cgi.find(extension);
+//     std::map<std::string, std::string>::const_iterator it = cgi.find(extension);
 
-    if (it == cgi.end())
-        return "";
+//     if (it == cgi.end())
+//         return "";
 
-    return it->second;
-}
+//     return it->second;
+// }
 
-// request /cgi-bin/test.py    get: ./www/cgi-bin/test.py
-std::string Server::buildCgiScriptPath(const std::string &path, const LocationConfig &location) const
-{
-     std::string root = location.getRoot();
+// // request /cgi-bin/test.py    get: ./www/cgi-bin/test.py
+// std::string Server::buildCgiScriptPath(const std::string &path, const LocationConfig &location) const
+// {
+//      std::string root = location.getRoot();
 
-    if (root.empty())
-        return "";
+//     if (root.empty())
+//         return "";
 
-    if (path.empty())
-        return root;
+//     if (path.empty())
+//         return root;
 
-    if (root[root.length() - 1] == '/' && path[0] == '/')
-    {
-        return root + path.substr(1);
-    }
+//     if (root[root.length() - 1] == '/' && path[0] == '/')
+//     {
+//         return root + path.substr(1);
+//     }
 
-    if (root[root.length() - 1] != '/' && path[0] != '/')
-    {
-        return root +"/" +path;
-    }
+//     if (root[root.length() - 1] != '/' && path[0] != '/')
+//     {
+//         return root +"/" +path;
+//     }
 
-    return root + path;
-}
+//     return root + path;
+// }
 
 
-std::string Server::buildCgiResponse(const std::string &output) const
-{
-    std::string::size_type pos = output.find("\r\n\r\n");
+// std::string Server::buildCgiResponse(const std::string &output) const
+// {
+//     std::string::size_type pos = output.find("\r\n\r\n");
 
-    std::size_t separatorLength = 4;
+//     std::size_t separatorLength = 4;
 
-    if (pos == std::string::npos)
-    {
-        pos = output.find("\n\n");
-        separatorLength = 2;
-    }
+//     if (pos == std::string::npos)
+//     {
+//         pos = output.find("\n\n");
+//         separatorLength = 2;
+//     }
 
-    /*
-     * CGI returned no headers.
-     */
-    if (pos == std::string::npos)
-    {
-        std::string response;
+//     /*
+//      * CGI returned no headers.
+//      */
+//     if (pos == std::string::npos)
+//     {
+//         std::string response;
 
-        response += "HTTP/1.1 200 OK\r\n";
+//         response += "HTTP/1.1 200 OK\r\n";
 
-        response += "Content-Type: text/html\r\n";
+//         response += "Content-Type: text/html\r\n";
 
-        response += "Content-Length: " + toString(output.size()) + "\r\n";
+//         response += "Content-Length: " + toString(output.size()) + "\r\n";
 
-        response += "Connection: close\r\n";
+//         response += "Connection: close\r\n";
 
-        response += "\r\n";
+//         response += "\r\n";
 
-        response += output;
+//         response += output;
 
-        return response;
-    }
+//         return response;
+//     }
 
-    std::string headers = output.substr(0, pos);
+//     std::string headers = output.substr(0, pos);
 
-    std::string body = output.substr(pos + separatorLength);
+//     std::string body = output.substr(pos + separatorLength);
 
-    std::string response;
+//     std::string response;
 
-    response += "HTTP/1.1 200 OK\r\n";
+//     response += "HTTP/1.1 200 OK\r\n";
 
-    response += headers;
+//     response += headers;
 
-    /*
-     * Add Content-Length.
-     */
-    response += "\r\nContent-Length: " + toString(body.size());
+//     /*
+//      * Add Content-Length.
+//      */
+//     response += "\r\nContent-Length: " + toString(body.size());
 
-    response += "\r\nConnection: close\r\n";
+//     response += "\r\nConnection: close\r\n";
 
-    response += "\r\n";
+//     response += "\r\n";
 
-    response += body;
+//     response += body;
 
-    return response;
-}
+//     return response;
+// }
 
-std::string Server::toString(std::size_t value) const
-{
-    std::ostringstream stream;
+// std::string Server::toString(std::size_t value) const
+// {
+//     std::ostringstream stream;
 
-    stream << value;
+//     stream << value;
 
-    return stream.str();
-}
+//     return stream.str();
+// }
 
 void Server::run()
 {
-    if (!setupServer())
+    for (std::size_t i = 0; i < _configs.size(); ++i)
+    {
+        const std::vector<ListenConfig> &listens =
+            _configs[i].getListens();
+        for (std::size_t j = 0; j < listens.size(); ++j)
+        {
+            std::cout << "server " << i
+                      << " host="
+                      << listens[j].getHost()
+                      << " port="
+                      << listens[j].getPort()
+                      << std::endl;
+            int listenFd = setupListenSocket(listens[j]);
+            if (listenFd == -1)
+                continue ;
+            else
+                _listenServerMap[listenFd] = i;
+        }
+    }
+    if (_listenFds.empty())
+    {
+        std::cerr << "listen socket failed" << std::endl;
         return ;
+    }
     while (true)
     {
         // poll
@@ -713,23 +773,23 @@ void Server::run()
                 continue ;
             }    
             int fd = _pollFds[i].fd;
-            if (fd == _listenFd
+            if (isListenFd(fd)
                 && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
                 std::cerr << "listen socket error" << std::endl;
                 return ;
             }
-            if (fd != _listenFd
+            if (!isListenFd(fd)
                 && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
                 std::cerr << "client connection closed or invalid" << std::endl;
                 removeClient(fd, i);
                 continue ;
             }
-            if (fd == _listenFd
+            if (isListenFd(fd)
                 && (_pollFds[i].revents & POLLIN))
             {
-                acceptClient();
+                acceptClient(fd);
                 ++i;
             }
             else if (_pollFds[i].revents & POLLIN)

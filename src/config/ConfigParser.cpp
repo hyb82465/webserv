@@ -197,8 +197,12 @@ void ConfigParser::parseRedirect(TokenStream &tokens, LocationConfig &location)
     long statusValue = std::strtol(strcode.c_str(), &endPtr, 10);
     if (*endPtr != '\0')
         throw std::runtime_error("Invalid redirect status: " +strcode);
-    if (statusValue < 300 || statusValue > 399)
-        throw std::runtime_error("Invalid redirect status code: " + strcode);
+    if (statusValue != 301
+        && statusValue != 302
+        && statusValue != 303
+        && statusValue != 307
+        && statusValue != 308)
+        throw std::runtime_error("Unsupported redirect status code: " + strcode);
     if (url == ";")
         throw std::runtime_error("Redirect URL cannot be empty.");
 

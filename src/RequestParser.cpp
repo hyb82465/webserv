@@ -83,7 +83,7 @@ ParseResult RequestParser::parseContentLengthBody(const std::string &body, HttpR
     return PARSE_COMPLETE;
 }
 
-ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest &request)
+ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest &request, std::size_t maxBodySize)
 {
     request._body.clear();
     std::size_t pos = 0;
@@ -124,7 +124,16 @@ ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest
             request._status = HTTP_OK;
             return PARSE_COMPLETE;
         }
+        if (maxBodySize != 0 
+            && (request._body.size() > maxBodySize
+            || chunkSize > maxBodySize - request._body.size()))
+        {
+            request._status = HTTP_PAYLOAD_TOO_LARGE;
+            return PARSE_ERROR;
+        }
         std::size_t dataStart = lineEnd + 2;
+        if (chunkSize > body.size() - dataStart)
+            return PARSE_INCOMPLETE;
         std::size_t dataEnd = dataStart + chunkSize;
         if (body.size() < dataEnd + 2)
             return PARSE_INCOMPLETE;
@@ -139,7 +148,7 @@ ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest
     }
 }
 
-ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
+ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request, std::size_t maxBodySize)
 {
     std::size_t headerEnd = raw.find("\r\n\r\n");
     if (headerEnd == std::string::npos)
@@ -214,6 +223,11 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
             request._status = HTTP_BAD_REQUEST;
             return PARSE_ERROR;
         }
+        if (maxBodySize != 0 && len > maxBodySize)
+        {
+            request._status = HTTP_PAYLOAD_TOO_LARGE;
+            return PARSE_ERROR;
+        }
         std::size_t bodySize = raw.size() - bodyStart;
         if (bodySize < len)
             return PARSE_INCOMPLETE;
@@ -227,7 +241,7 @@ ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request)
             request._status = HTTP_BAD_REQUEST;
             return PARSE_ERROR;
         }
-        return parseChunkedBody(body, request);
+        return parseChunkedBody(body, request, maxBodySize);
     }
     else
     {

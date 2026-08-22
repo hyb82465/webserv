@@ -34,6 +34,8 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
         request._query = "";
     if (request._path.empty() || request._path[0] != '/')
         return HTTP_BAD_REQUEST;
+    if (!Utils::decodeUri(request._path))
+        return HTTP_BAD_REQUEST;
     if (request._version != "HTTP/1.1")
         return HTTP_VERSION_NOT_SUPPORTED;
     return HTTP_OK;

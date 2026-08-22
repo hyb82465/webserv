@@ -1,4 +1,7 @@
 #include "Utils.hpp"
+#include <sstream>
+#include <iomanip>
+#include <cctype>
 
 std::string Utils::trim(const std::string &line)
 {
@@ -22,4 +25,33 @@ std::string Utils::toLower(const std::string &str)
         );
     }
     return result;
+}
+
+bool Utils::decodeUri(std::string &path)
+{
+    std::string decoded;
+    for (std::size_t i = 0; i < path.size(); i++)
+    {
+        if (path[i] != '%')
+        {
+            decoded += path[i];
+            continue ;
+        }
+        if (i + 2 >= path.size())
+            return false;
+        if (!std::isxdigit(static_cast<unsigned char>(path[i + 1]))
+            || !std::isxdigit(static_cast<unsigned char>(path[i + 2])))
+            return false;
+        std::string hex = path.substr(i + 1, 2);
+        unsigned int value;
+        std::stringstream ss(hex);
+        if (!(ss >> std::hex >> value))
+            return false;
+        if (value == 0)
+            return false;
+        decoded += static_cast<char>(value);
+        i += 2;
+    }
+    path = decoded;
+    return true;
 }

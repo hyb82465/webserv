@@ -217,9 +217,6 @@ int main(int argc, char **argv)
 				  << std::endl;
 		return (1);
 	}
-	(void)argv;
-	// create Config
-	
 	try
 	{
 		ConfigParser parser;
@@ -241,10 +238,9 @@ int main(int argc, char **argv)
 			
 		// std::cout << "Configuration file parsed successfully" << std::endl;
 		// printConfig(servers);
-	
+
 		Server	server(servers);
-		server.run();
-		
+		server.run();		
 	}
 	catch (const std::exception &e)
 	{

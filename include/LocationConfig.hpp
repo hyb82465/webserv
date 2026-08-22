@@ -42,8 +42,7 @@ public:
     void setRedirectUrl(const std::string &url);
 
     void addMethod(const std::string &method);
-    void addCgi(const std::string &extension,
-                const std::string &executable);
+    void addCgi(const std::string &extension, const std::string &executable);
 };
 
 #endif

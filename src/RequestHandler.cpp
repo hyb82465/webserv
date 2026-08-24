@@ -110,13 +110,13 @@ HttpResponse RequestHandler::internalServerError()
     );
 }
 
-HttpResponse RequestHandler::notImplemented()
-{
-    return errorResponse(
-        HTTP_NOT_IMPLEMENTED,
-        "501 Not Implemented"
-    );
-}
+// HttpResponse RequestHandler::notImplemented()
+// {
+//     return errorResponse(
+//         HTTP_NOT_IMPLEMENTED,
+//         "501 Not Implemented"
+//     );
+// }
 
 HttpResponse RequestHandler::versionNotSupported()
 {
@@ -124,6 +124,18 @@ HttpResponse RequestHandler::versionNotSupported()
         HTTP_VERSION_NOT_SUPPORTED,
         "505 Version Not Supported"
     );
+}
+
+HttpResponse RequestHandler::redirect(
+    HttpStatus status,
+    const std::string &url)
+{
+    HttpResponse response;
+    response.setStatus(status);
+    response.setHeader("Location", url);
+    response.setHeader("Connection", "close");
+    response.setBody("");
+    return response;
 }
 
 std::string RequestHandler::getMimeType(const std::string &path)
@@ -159,11 +171,8 @@ std::string RequestHandler::getBoundary(const HttpRequest &request)
     std::string key = "boundary=";
     std::size_t pos = contentType.find(key);
     if (pos == std::string::npos)
-    {
-        // error
-    }
-    std::string boundary = contentType.substr(pos + key.size());
-    return boundary;
+        return "";
+    return contentType.substr(pos + key.size());
 }
 
 std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body,const std::string &boundary)
@@ -330,6 +339,8 @@ const LocationConfig *RequestHandler::findLocation(
         bool match = false;
         if (requestPath == locationPath)
             match = true;
+        else if (requestPath + "/" == locationPath)
+            match = true;
         else if (locationPath == "/")
             match = true;
         else if (requestPath.size() > locationPath.size()
@@ -361,6 +372,8 @@ std::string RequestHandler::buildPath(const LocationConfig *location, const std:
         root = location->getRoot();
         const std::string &locationPath = location->getPath();
         if (locationPath.empty())
+            return "";
+        if (requestPath.size() < locationPath.size())
             return "";
         if (locationPath == "/")
             relativePath = requestPath;
@@ -475,14 +488,14 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
             {
                 if (!autoindex)
                     return forbidden();
-                autoindexResponse(path, request.getPath());
+                return autoindexResponse(path, request.getPath());
             }    
         }
         else
         {
             if (!autoindex)
                 return forbidden();
-            autoindexResponse(path, request.getPath());
+            return autoindexResponse(path, request.getPath());
         }
     }
     else if (!S_ISREG(info.st_mode))
@@ -589,21 +602,26 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
     if (hasParentTraversal(requestPath))
         return forbidden();
     const LocationConfig *location = findLocation(_server, requestPath);
+    if (location != NULL && location->getPath() == requestPath + "/")
+    {
+        return redirect(
+            HTTP_MOVED_PERMANENTLY,
+            requestPath + "/"
+        );
+    }
     const std::string &requestMethod = request.getMethod();
-    if (requestMethod != "GET"
-        && requestMethod != "POST"
-        && requestMethod != "DELETE")
-        return notImplemented();
+    // if (requestMethod != "GET"
+    //     && requestMethod != "POST"
+    //     && requestMethod != "DELETE")
+    //     return notImplemented();
     if (!isMethodAllowed(location, requestMethod))
         return methodNotAllowed();
     if (location != NULL && location->getRedirectCode() != 0)
     {
-        HttpResponse response;
-        response.setStatus(static_cast<HttpStatus>(location->getRedirectCode()));
-        response.setHeader("Location", location->getRedirectUrl());
-        response.setHeader("Connection", "close");
-        response.setBody("");
-        return response;
+        return redirect(
+            static_cast<HttpStatus>(location->getRedirectCode()),
+            location->getRedirectUrl()
+        );
     }
     if (requestMethod == "GET")
         return handleGet(request, location);

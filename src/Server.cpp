@@ -6,7 +6,6 @@
 #include "Signal.hpp"
 #include <sys/socket.h>
 #include <netdb.h>
-#include <netinet/in.h>
 #include <poll.h>
 #include <utility>
 #include <unistd.h>

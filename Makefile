@@ -6,7 +6,7 @@
 #    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/14 11:49:20 by zhma             ###   ########.fr        #
+#    Updated: 2026/08/24 09:41:26 by zhma             ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,6 +22,7 @@ SRCS = src/main.cpp \
 	   src/RequestParser.cpp \
 	   src/HttpResponse.cpp \
 	   src/RequestHandler.cpp \
+	   src/CgiHandler.cpp \
 	   src/config/ConfigParser.cpp \
 	   src/config/ServerConfig.cpp \
 	   src/config/Tokenizer.cpp \

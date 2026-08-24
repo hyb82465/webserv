@@ -12,11 +12,12 @@ class CgiHandler
 {
 private:
     int _clientFd;
+    
+    pid_t _pid;
 
     int _stdinFd;
     int _stdoutFd;
 
-    pid_t _pid;
 
     bool _stdinOpen;
     bool _stdoutOpen;

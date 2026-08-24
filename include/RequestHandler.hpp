@@ -49,9 +49,7 @@ private:
     );
     bool writeFile(const std::string &path, const std::string &data);
     std::string generateAutoindex(const std::string &path, const std::string &requestPath);
-    const LocationConfig *findLocation(
-        const ServerConfig &server,
-        const std::string &requestPath);
+    const LocationConfig *findLocation(const ServerConfig &server, const std::string &requestPath);
     std::string buildPath(const LocationConfig *location, const std::string &requestPath);
     std::string getRoot(const LocationConfig *location) const;
     std::string getIndex(const LocationConfig *location) const;

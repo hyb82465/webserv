@@ -1,0 +1,4 @@
+Hello from CGI relative file!
+
+If you can read this file,
+the CGI working directory is correct.

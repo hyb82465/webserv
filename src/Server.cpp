@@ -179,7 +179,7 @@ void Server::acceptClient(int listenFd)
 
     struct pollfd clientPollFd;
     clientPollFd.fd = clientFd;
-    clientPollFd.events = POLLIN;
+    clientPollFd.events = POLLIN | POLLOUT;
     clientPollFd.revents = 0;
 
     _pollFds.push_back(clientPollFd);
@@ -193,6 +193,39 @@ void Server::acceptClient(int listenFd)
     std::size_t serverIndex = it->second;
     _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex)));
     std::cout << "client connected, fd = " << clientFd << std::endl;
+}
+
+const LocationConfig *Server::findLocation(const ServerConfig &config, const std::string &path) const
+{
+    const std::vector<LocationConfig> &locations = config.getLocations();
+
+    const LocationConfig *best = NULL;
+
+    for (std::size_t i = 0; i < locations.size(); ++i)
+    {
+        const std::string &locationPath = locations[i].getPath();
+        if (locationPath.empty())
+            continue;
+
+        bool match = false;
+
+        if (path == locationPath)
+            match = true;
+        else if  (locationPath == "/")
+            match = true;
+        else if (path.size() > locationPath.size() 
+                && path.compare(0, locationPath.size(), locationPath) == 0
+                && (path[locationPath.size()] == '/' || locationPath[locationPath.size() - 1] == '/'))
+            match = true;
+            
+        if (match)
+        {
+            if (best == NULL || locationPath.size() > best->getPath().size())
+            best = &locations[i];
+        }    
+        
+    }
+    return best;
 }
 
 void Server::handleRead(int fd, std::size_t &i)
@@ -267,7 +300,7 @@ void Server::handleRead(int fd, std::size_t &i)
                 
                 std::cout << it->second.getReadBuffer() << std::endl;
                 
-    const LocationConfig *location = findLocation(request.getPath(), config);
+    const LocationConfig *location = findLocation(config, request.getPath());
 
     if (location != NULL && !location->getCgi().empty())
     {

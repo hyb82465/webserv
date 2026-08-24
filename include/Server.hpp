@@ -46,7 +46,8 @@ private:
     void addCgiPollFds(CgiHandler *cgi);
     void checkCgiChildren();
 
-    const LocationConfig *findLocation(const std::string &path, const ServerConfig &config) const;
+    
+    const LocationConfig *findLocation(const ServerConfig &config, const std::string &path) const;
     std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
     std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
 

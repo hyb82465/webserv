@@ -41,6 +41,7 @@ private:
     HttpResponse notImplemented(); // 501
     HttpResponse versionNotSupported(); // 505
 
+    HttpResponse redirect(HttpStatus status, const std::string &url);
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
     std::vector<MultipartPart> parseMultipart(

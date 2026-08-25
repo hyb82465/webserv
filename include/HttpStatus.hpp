@@ -23,7 +23,7 @@ enum HttpStatus
 
     // server error
     HTTP_INTERNAL_SERVER_ERROR = 500,
-    HTTP_NOT_IMPLEMENTED = 501,
+    // HTTP_NOT_IMPLEMENTED = 501,
     HTTP_VERSION_NOT_SUPPORTED = 505
 };
 

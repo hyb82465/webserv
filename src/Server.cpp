@@ -178,7 +178,7 @@ void Server::acceptClient(int listenFd)
 
     struct pollfd clientPollFd;
     clientPollFd.fd = clientFd;
-    clientPollFd.events = POLLIN | POLLOUT;
+    clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
 
     _pollFds.push_back(clientPollFd);
@@ -397,6 +397,7 @@ void Server::handleCgiWrite(int fd, std::size_t &i)
 
     if (cgi == NULL)
     {
+        _cgiFds.erase(fd);
         removePollFd(fd);
         return;
     }
@@ -795,7 +796,7 @@ void Server::run()
                 if (_pollFds[i].revents & POLLOUT)
                 {
                     handleCgiWrite(fd, i);
-                    continue;
+                    contihandleCgiWritenue;
                 }
                 if (_pollFds[i].revents & POLLIN)
                 {

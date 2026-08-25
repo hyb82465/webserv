@@ -129,14 +129,17 @@ bool CgiHandler::writeBody()
         }
         return false;
     }
-    if (bytes == -1 &&(errno == EAGAIN || errno == EWOULDBLOCK))
+    else if (bytes == 0)
     {
-        //Pipe temporarily cannot accept more data.Keep stdin open and wait for the next POLLOUT.
-        return false;
+        closeInput();
+        return true;
     }
     // real write error
-    closeInput();
-    return true;
+    else
+    {
+        closeInput();
+        return true;
+    }
 }
 
 bool CgiHandler::readOutput()
@@ -150,16 +153,18 @@ bool CgiHandler::readOutput()
         _output.append(buffer, static_cast<std::size_t>(bytes));
         return false;
     }
-    if (bytes == 0)
+    else if (bytes == 0)
     {
         closeOutput();
         return true;
     }
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-        return false;
+    else
+    {
+        closeOutput();
+        return true;
 
-    closeOutput();
-    return true;
+    }
+
 }
 
 void CgiHandler::closeInput()

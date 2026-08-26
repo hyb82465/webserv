@@ -535,7 +535,18 @@ void Server::finishCgi(CgiHandler *cgi)
      *       ↓
      * HTTP response
      */
-    std::string response = buildCgiResponse(cgi->getOutput());
+    std::string response;
+    if (cgi->isChildSuccess())
+    {
+        response = buildCgiResponse(cgi->getOutput());
+
+    } 
+    else
+    {
+        RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
+        HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+        response = error.getResponse();
+    }
 
     clientIt->second.setWriteBuffer(response);
 
@@ -796,8 +807,8 @@ void Server::run()
                 if (_pollFds[i].revents & POLLOUT)
                 {
                     handleCgiWrite(fd, i);
-                    contihandleCgiWritenue;
-                }
+                    continue;
+                } 
                 if (_pollFds[i].revents & POLLIN)
                 {
                     handleCgiRead(fd, i);

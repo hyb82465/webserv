@@ -26,11 +26,14 @@ private:
     std::string _scriptPath;
 
     std::string _requestBody;
-    std::size_t _bodyOffset;
+    std::size_t _bodyOffset;// how many bytes wroten in CGI
 
     std::string _output;
 
     std::vector<std::string> _environment;
+
+    int _exitStatus;
+    bool _childFinished;
 
     CgiHandler(const CgiHandler &other);
     CgiHandler &operator=(const CgiHandler &other);
@@ -67,6 +70,7 @@ public:
     bool isStdoutOpen() const;
 
     bool waitForChild();
+    bool isChildSuccess() const;
     
     const std::string &getOutput() const;
 };

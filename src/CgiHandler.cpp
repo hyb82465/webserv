@@ -18,7 +18,9 @@ CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::s
          _requestBody(""),
          _bodyOffset(0),
          _output(""),
-         _environment()
+         _environment(),
+         _exitStatus(-1),
+         _childFinished(false)
 {
 
 }
@@ -306,8 +308,17 @@ bool CgiHandler::waitForChild()
     if (result == _pid)
     {
         _pid = -1;
+        _childFinished = true;
+        _exitStatus = status;
         return true;
     }
 
     return false;
+}
+
+bool CgiHandler::isChildSuccess() const
+{
+    if (!_childFinished)
+        return false;
+    return WIFEXITED(_exitStatus) && WEXITSTATUS(_exitStatus) == 0; 
 }

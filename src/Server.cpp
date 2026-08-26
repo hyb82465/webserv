@@ -231,13 +231,24 @@ void Server::handleRead(int fd, std::size_t &i)
         return ;
     }
     const ServerConfig &config = _configs[serverIndex];
-    HttpRequest request;
+
+    RequestState &state = it->second.getRequestState();
+    HttpRequest &request = state.request;
     RequestParser parser;
     std::size_t maxBodySize = config.getClientMaxBodySize();
-    ParseResult result = parser.parse(it->second.getReadBuffer(), request, maxBodySize);
+    ParseResult result = parser.parse(it->second.getReadBuffer(), state, maxBodySize);
+
+    // std::cout << "parse result = " << result
+    //       << ", stage = " << state.stage
+    //       << ", status = " << state.request.getStatus()
+    //       << ", method = [" << state.request.getMethod() << "]"
+    //       << ", path = [" << state.request.getPath() << "]"
+    //       << ", body size = " << state.request.getBody().size()
+    //       << std::endl;
+
     if (result == PARSE_INCOMPLETE)
     {
-        std::cout << "request incomplete" << std::endl;
+        // std::cout << "request incomplete" << std::endl;
         ++i;
         return ;
     }
@@ -252,20 +263,17 @@ void Server::handleRead(int fd, std::size_t &i)
         _pollFds[i].events = POLLOUT;
         ++i;
         return ;
-    }
-    
-    std::cout << "method: "
-              << request.getMethod()
-              << std::endl;
-    std::cout << "path: "
-              << request.getPath()
-              << std::endl;
-    std::cout << "body: "
-              << request.getBody()
-              << std::endl;
-
-    std::cout << it->second.getReadBuffer() << std::endl;
-
+    }   
+    // std::cout << "method: "
+    //           << request.getMethod()
+    //           << std::endl;
+    // std::cout << "path: "
+    //           << request.getPath()
+    //           << std::endl;
+    // std::cout << "body: "
+    //           << request.getBody()
+    //           << std::endl;
+    // std::cout << it->second.getReadBuffer() << std::endl;
     RequestHandler handler(config);
     HttpResponse response = handler.handle(request);
     it->second.setWriteBuffer(response.getResponse());

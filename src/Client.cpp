@@ -9,7 +9,8 @@ Client::Client(const Client &other)
       _readBuffer(other._readBuffer),
       _writeBuffer(other._writeBuffer),
       _bytesSent(other._bytesSent),
-      _serverIndex(other._serverIndex)
+      _serverIndex(other._serverIndex),
+      _requestState(other._requestState)
 {}
 
 Client &Client::operator=(const Client &other)
@@ -21,6 +22,7 @@ Client &Client::operator=(const Client &other)
         _writeBuffer = other._writeBuffer;
         _bytesSent = other._bytesSent;
         _serverIndex = other._serverIndex;
+        _requestState = other._requestState;
     }
     return *this;
 }
@@ -51,6 +53,21 @@ std::size_t Client::getBytesSent() const
 std::size_t Client::getServerIndex() const
 {
     return _serverIndex;
+}
+
+RequestState &Client::getRequestState()
+{
+    return _requestState;
+}
+
+const RequestState &Client::getRequestState() const
+{
+    return _requestState;
+}
+
+void Client::resetRequestState()
+{
+    _requestState.reset();
 }
 
 void Client::appendToReadBuffer(const char *data, std::size_t length)

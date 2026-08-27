@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <stdexcept>
+#include <signal.h>
 
 CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath)
         :_clientFd(clientFd), _pid(-1), 
@@ -20,7 +21,8 @@ CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::s
          _output(""),
          _environment(),
          _exitStatus(-1),
-         _childFinished(false)
+         _childFinished(false),
+         _startTime(0)
 {
 
 }
@@ -99,6 +101,7 @@ void CgiHandler::start(const HttpRequest &request)
         _exit(1);
     }
     //father
+    _startTime = std::time(NULL);
     close(inputPipe[0]);
     close(outputPipe[1]);
 
@@ -314,6 +317,37 @@ bool CgiHandler::waitForChild()
     }
 
     return false;
+}
+bool CgiHandler::hasTimedOut(int timeoutSeconds) const
+{
+    if (_pid <= 0)
+        return false;
+
+    std::time_t now = std::time(NULL);
+
+    if (now == static_cast<std::time_t>(-1))
+        return false;
+
+    return (now - _startTime) >= timeoutSeconds;
+}
+
+void CgiHandler::killChild()
+{
+    if (_pid <= 0)
+        return;
+
+    kill(_pid, SIGKILL);
+
+    int status;
+
+    waitpid(_pid, &status, 0);
+
+    _exitStatus = status;
+    _childFinished = true;
+    _pid = -1;
+
+    closeInput();
+    closeOutput();
 }
 
 bool CgiHandler::isChildSuccess() const

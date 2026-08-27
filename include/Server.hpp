@@ -54,6 +54,7 @@ private:
     std::string buildCgiResponse(const std::string &output) const;
     std::string toString(std::size_t value) const;
 
+    void checkCgiTimeouts();
 public:
     Server(const std::vector<ServerConfig> &_configs);
     ~Server();

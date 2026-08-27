@@ -740,6 +740,51 @@ std::string Server::toString(std::size_t value) const
     return stream.str();
 }
 
+void Server::checkCgiTimeouts()
+{
+    const int CGI_TIMEOUT = 5;
+
+    std::size_t i = 0;
+
+    while (i < _cgiHandlers.size())
+    {
+        CgiHandler *cgi = _cgiHandlers[i];
+
+        if (!cgi->hasTimedOut(CGI_TIMEOUT))
+        {
+            ++i;
+            continue;
+        }
+
+        std::cout << "CGI timeout" << std::endl;
+
+        int clientFd = cgi->getClientFd();
+
+        cgi->killChild();
+
+        std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
+
+        if (clientIt != _clients.end())
+        {
+            HttpResponse response;
+
+
+            clientIt->second.setWriteBuffer(response.getResponse());
+
+            for (std::size_t j = 0; j < _pollFds.size(); ++j)
+            {
+                if (_pollFds[j].fd == clientFd)
+                {
+                    _pollFds[j].events = POLLOUT;
+                    break;
+                }
+            }
+        }
+
+        removeCgi(cgi);
+    }
+}
+
 void Server::run()
 {
     for (std::size_t i = 0; i < _configs.size(); ++i)
@@ -770,7 +815,7 @@ void Server::run()
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        int readyCount = poll(&_pollFds[0], _pollFds.size(), -1);
+        int readyCount = poll(&_pollFds[0], _pollFds.size(), 1000);
         if (readyCount == -1)
         {
             if (!g_running)
@@ -778,6 +823,12 @@ void Server::run()
             std::cerr << "poll failed" << std::endl;
             return ;
         }
+
+        checkCgiTimeouts();
+
+        if (readyCount == 0)
+            continue;
+
         for (std::size_t i = 0; i < _pollFds.size(); )
         {
             if (_pollFds[i].revents == 0)

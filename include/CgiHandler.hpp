@@ -7,6 +7,8 @@
 #include <vector>
 #include <map>
 #include <sys/types.h>
+#include <ctime>
+
 
 class CgiHandler
 {
@@ -34,6 +36,8 @@ private:
 
     int _exitStatus;
     bool _childFinished;
+
+    std::time_t _startTime;
 
     CgiHandler(const CgiHandler &other);
     CgiHandler &operator=(const CgiHandler &other);
@@ -71,6 +75,9 @@ public:
 
     bool waitForChild();
     bool isChildSuccess() const;
+    
+    bool hasTimedOut(int timeoutSeconds) const;
+    void killChild();
     
     const std::string &getOutput() const;
 };

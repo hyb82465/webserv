@@ -487,7 +487,7 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
             else
             {
                 if (!autoindex)
-                    return forbidden();
+                    return notFound();
                 return autoindexResponse(path, request.getPath());
             }    
         }

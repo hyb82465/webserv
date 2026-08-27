@@ -12,7 +12,9 @@ RequestParser::RequestParser()
 RequestParser::~RequestParser()
 {}
 
-HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest &request)
+HttpStatus RequestParser::parseRequestLine(
+    const std::string &line,
+    HttpRequest &request)
 {
     std::stringstream ss(line);
     if (!(ss >> request._method))
@@ -41,7 +43,9 @@ HttpStatus RequestParser::parseRequestLine(const std::string &line, HttpRequest 
     return HTTP_OK;
 }
 
-HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &request)
+HttpStatus RequestParser::parseHeaders(
+    const std::string &headers,
+    HttpRequest &request)
 {
     std::size_t start = 0;
     while (start < headers.size())
@@ -78,177 +82,254 @@ HttpStatus RequestParser::parseHeaders(const std::string &headers, HttpRequest &
     return HTTP_OK;
 }
 
-ParseResult RequestParser::parseContentLengthBody(const std::string &body, HttpRequest &request)
+StageResult RequestParser::parseRequestLineStage(
+    const std::string &buffer,
+    RequestState &state)
 {
-    request._body = body;
-    request._status = HTTP_OK;
-    return PARSE_COMPLETE;
-}
-
-ParseResult RequestParser::parseChunkedBody(const std::string &body, HttpRequest &request, std::size_t maxBodySize)
-{
-    request._body.clear();
-    std::size_t pos = 0;
-    while (true)
-    {
-        std::size_t lineEnd = body.find("\r\n", pos);
-        if (lineEnd == std::string::npos)
-            return PARSE_INCOMPLETE;
-        std::string sizeStr = body.substr(pos, lineEnd - pos);
-        if (sizeStr.empty())
-        {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
-        }
-        std::cout << "chunk size string: " << sizeStr << std::endl;
-        std::size_t chunkSize;
-        std::stringstream ss(sizeStr);
-        if (!(ss >> std::hex >> chunkSize))
-        {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
-        }
-        std::string extra;
-        if (ss >> extra)
-        {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
-        }
-        if (chunkSize == 0)
-        {
-            if (body.size() < lineEnd + 4)
-                return PARSE_INCOMPLETE;
-            if (body[lineEnd + 2] != '\r' || body[lineEnd + 3] != '\n')
-            {
-                request._status = HTTP_BAD_REQUEST;
-                return PARSE_ERROR;
-            }
-            request._status = HTTP_OK;
-            return PARSE_COMPLETE;
-        }
-        if (maxBodySize != 0 
-            && (request._body.size() > maxBodySize
-            || chunkSize > maxBodySize - request._body.size()))
-        {
-            request._status = HTTP_PAYLOAD_TOO_LARGE;
-            return PARSE_ERROR;
-        }
-        std::size_t dataStart = lineEnd + 2;
-        if (chunkSize > body.size() - dataStart)
-            return PARSE_INCOMPLETE;
-        std::size_t dataEnd = dataStart + chunkSize;
-        if (body.size() < dataEnd + 2)
-            return PARSE_INCOMPLETE;
-        if (body[dataEnd] != '\r' || body[dataEnd + 1] != '\n')
-        {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
-        }
-        std::string chunkData = body.substr(dataStart, chunkSize);
-        request._body += chunkData;
-        pos = dataEnd + 2;
-    }
-}
-
-ParseResult RequestParser::parse(const std::string &raw, HttpRequest &request, std::size_t maxBodySize)
-{
-    std::size_t headerEnd = raw.find("\r\n\r\n");
-    if (headerEnd == std::string::npos)
-        return PARSE_INCOMPLETE;
-
-    // line
-    std::size_t lineEnd = raw.find("\r\n");
-    // would not happen
+    std::size_t lineEnd = buffer.find("\r\n", state.pos);
     if (lineEnd == std::string::npos)
-    {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
-    }
-    std::string requestLine = raw.substr(0, lineEnd);
-    request._status = parseRequestLine(requestLine, request);
-    if (request._status != HTTP_OK)
-        return PARSE_ERROR;
+        return STAGE_INCOMPLETE;
+    std::string line = buffer.substr(state.pos, lineEnd - state.pos);
+    state.request._status = parseRequestLine(line, state.request);
+    if (state.request._status != HTTP_OK)
+        return STAGE_ERROR;
+    state.pos = lineEnd + 2;
+    state.stage = STAGE_HEADERS;
+    return STAGE_OK;
+}
 
-    // headers
-    std::size_t headerStart = lineEnd + 2;
-    std::string headers = raw.substr(headerStart, (headerEnd - headerStart));
-    request._status = parseHeaders(headers, request);
-    if (request._status != HTTP_OK)
-        return PARSE_ERROR;
+StageResult RequestParser::parseHeadersStage(
+    const std::string &buffer,
+    RequestState &state,
+    std::size_t maxBodySize)
+{
+    std::size_t headerStart = state.pos;
+    std::size_t headerEnd = buffer.find("\r\n\r\n", state.pos);
+    if (headerEnd == std::string::npos)
+        return STAGE_INCOMPLETE;
+    std::string headers = buffer.substr(headerStart, (headerEnd - headerStart));
+    state.request._status = parseHeaders(headers, state.request);
+    if (state.request._status != HTTP_OK)
+        return STAGE_ERROR;
     std::map<std::string, std::string>::iterator host =
-        request._headers.find("host");
-    if (host == request._headers.end() || host->second.empty())
+        state.request._headers.find("host");
+    if (host == state.request._headers.end() || host->second.empty())
     {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
     }
+    state.pos = headerEnd + 4;
 
-    // body
-    std::size_t bodyStart = headerEnd + 4;
-    std::string body = raw.substr(bodyStart);
     std::map<std::string, std::string>::iterator contentLength =
-            request._headers.find("content-length");
+            state.request._headers.find("content-length");
     std::map<std::string, std::string>::iterator transferEncoding =
-            request._headers.find("transfer-encoding");
-    if (contentLength != request._headers.end()
-        && transferEncoding != request._headers.end())
+            state.request._headers.find("transfer-encoding");
+    if (contentLength != state.request._headers.end()
+        && transferEncoding != state.request._headers.end())
     {
-        request._status = HTTP_BAD_REQUEST;
-        return PARSE_ERROR;
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
     }
-    if (contentLength != request._headers.end())
+    if (contentLength != state.request._headers.end())
     {
         const std::string &value = contentLength->second;
         if (value.empty())
         {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
         }
         for (std::size_t i = 0; i < value.size(); ++i)
         {
             if (!std::isdigit(static_cast<unsigned char>(value[i])))
             {
-                request._status = HTTP_BAD_REQUEST;
-                return PARSE_ERROR;
+                state.request._status = HTTP_BAD_REQUEST;
+                return STAGE_ERROR;
             }
         }
         std::stringstream ss(value);
-        std::size_t len;
-        if (!(ss >> len))
+        if (!(ss >> state.contentLength))
         {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
         }
         std::string extra;
         if (ss >> extra)
         {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
         }
-        if (maxBodySize != 0 && len > maxBodySize)
+        if (maxBodySize != 0 && state.contentLength > maxBodySize)
         {
-            request._status = HTTP_PAYLOAD_TOO_LARGE;
-            return PARSE_ERROR;
+            state.request._status = HTTP_PAYLOAD_TOO_LARGE;
+            return STAGE_ERROR;
         }
-        std::size_t bodySize = raw.size() - bodyStart;
-        if (bodySize < len)
-            return PARSE_INCOMPLETE;
-        return parseContentLengthBody(body.substr(0, len), request);
+        state.stage = STAGE_CONTENT_BODY;
+        return STAGE_OK;
     }
-    else if (transferEncoding != request._headers.end())
+    else if (transferEncoding != state.request._headers.end())
     {
         // only accept "chunked"
         if (Utils::toLower(transferEncoding->second) != "chunked")
         {
-            request._status = HTTP_BAD_REQUEST;
-            return PARSE_ERROR;
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
         }
-        return parseChunkedBody(body, request, maxBodySize);
+        state.stage = STAGE_CHUNK_SIZE;
+        return STAGE_OK;
     }
     else
     {
-        request._body = "";
-        request._status = HTTP_OK;
-        return PARSE_COMPLETE;
+        state.request._body = "";
+        state.request._status = HTTP_OK;
+        state.stage = STAGE_DONE;
+        return STAGE_OK;
     }
+    return STAGE_OK;
+}
+
+StageResult RequestParser::parseContentBodyStage(
+    const std::string &buffer,
+    RequestState &state)
+{
+    if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    if (buffer.size() - state.pos < state.contentLength)
+        return STAGE_INCOMPLETE;
+    state.request._body.assign(buffer, state.pos, state.contentLength);
+    state.pos += state.contentLength;
+
+    state.request._status = HTTP_OK;
+    state.stage = STAGE_DONE;
+    return STAGE_OK;
+}
+
+StageResult RequestParser::parseChunkSizeStage(
+    const std::string &buffer,
+    RequestState &state,
+    std::size_t maxBodySize)
+{
+    std::size_t lineEnd = buffer.find("\r\n",state.pos);
+    if (lineEnd == std::string::npos)
+        return STAGE_INCOMPLETE;
+    std::string sizeStr = buffer.substr(state.pos, lineEnd - state.pos);
+    if (sizeStr.empty())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    std::size_t chunkSize;
+    std::stringstream ss(sizeStr);
+    if (!(ss >> std::hex >> chunkSize))
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    std::string extra;
+    if (ss >> extra)
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    std::size_t nextPos = lineEnd + 2;
+
+    if (chunkSize == 0)
+    {
+        if (nextPos > buffer.size() || buffer.size() - nextPos < 2)
+            return STAGE_INCOMPLETE;
+        if (buffer[nextPos] != '\r' || buffer[nextPos + 1] != '\n')
+        {
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
+        }
+        state.pos = nextPos + 2;
+        state.request._status = HTTP_OK;
+        state.stage = STAGE_DONE;
+        return STAGE_OK;
+    }
+    if (maxBodySize != 0 
+        && (state.request._body.size() > maxBodySize
+        || chunkSize > maxBodySize - state.request._body.size()))
+    {
+        state.request._status = HTTP_PAYLOAD_TOO_LARGE;
+        return STAGE_ERROR;
+    }
+    state.chunkSize = chunkSize;
+    state.pos = nextPos;
+    state.stage = STAGE_CHUNK_DATA;
+    return STAGE_OK;
+}
+
+StageResult RequestParser::parseChunkDataStage(
+    const std::string &buffer, 
+    RequestState &state)
+{
+    if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    std::size_t available = buffer.size() - state.pos;
+    if (state.chunkSize > available)
+        return STAGE_INCOMPLETE;
+    if (available - state.chunkSize < 2)
+        return STAGE_INCOMPLETE;
+    std::size_t dataEnd = state.pos + state.chunkSize;
+    if (buffer[dataEnd] != '\r' || buffer[dataEnd + 1] != '\n')
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    state.request._body.append(buffer, state.pos, state.chunkSize);
+    state.pos = dataEnd + 2;
+    state.chunkSize = 0;
+    state.stage = STAGE_CHUNK_SIZE;
+    return STAGE_OK;
+}
+
+StageResult RequestParser::parseCurrentStage(
+    const std::string &buffer,
+    RequestState &state,
+    std::size_t maxBodySize)
+{
+    switch (state.stage)
+    {
+        case STAGE_REQUEST_LINE:
+            return parseRequestLineStage(buffer, state);
+
+        case STAGE_HEADERS:
+            return parseHeadersStage(buffer, state, maxBodySize);
+
+        case STAGE_CONTENT_BODY:
+            return parseContentBodyStage(buffer, state);
+
+        case STAGE_CHUNK_SIZE:
+            return parseChunkSizeStage(buffer, state, maxBodySize);
+
+        case STAGE_CHUNK_DATA:
+            return parseChunkDataStage(buffer, state);
+
+        default:
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
+    }
+}
+
+ParseResult RequestParser::parse(
+    const std::string &buffer,
+    RequestState &state,
+    std::size_t maxBodySize)
+{
+    while (state.stage != STAGE_DONE)
+    {
+        StageResult result = parseCurrentStage(buffer, state, maxBodySize);
+        if (result == STAGE_INCOMPLETE)
+            return PARSE_INCOMPLETE;
+        if (result == STAGE_ERROR)
+            return PARSE_ERROR;
+        // STAGE_OK continue
+    }
+    return PARSE_COMPLETE;
 }

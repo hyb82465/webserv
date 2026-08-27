@@ -32,6 +32,9 @@ public:
     RequestState &getRequestState();
     const RequestState &getRequestState() const;
     void resetRequestState();
+    void clearWriteBuffer();
+    void resetBytesSent();
+    void consumeReadBuffer(std::size_t count);
 
     void appendToReadBuffer(const char *data, std::size_t length);
     void setWriteBuffer(const std::string &data);

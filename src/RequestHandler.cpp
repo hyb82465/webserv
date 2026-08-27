@@ -46,7 +46,6 @@ HttpResponse RequestHandler::errorResponse(
         response.setBody(defaultBody);
     }
     response.setStatus(status);
-    response.setHeader("Connection", "close");
     return response;
 }
 
@@ -57,7 +56,6 @@ HttpResponse RequestHandler::autoindexResponse(
     HttpResponse response;
     response.setStatus(HTTP_OK);
     response.setHeader("Content-Type", "text/html");
-    response.setHeader("Connection", "close");
     response.setBody(generateAutoindex(path, requestPath));
     return response;
 }
@@ -133,7 +131,6 @@ HttpResponse RequestHandler::redirect(
     HttpResponse response;
     response.setStatus(status);
     response.setHeader("Location", url);
-    response.setHeader("Connection", "close");
     response.setBody("");
     return response;
 }
@@ -510,7 +507,6 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
     std::string mimeType = getMimeType(path);
     response.setStatus(HTTP_OK);
     response.setHeader("Content-Type", mimeType);
-    response.setHeader("Connection", "close");
     response.setBody(buffer.str());
     return response;
 }
@@ -556,7 +552,6 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
         else
             response.setStatus(HTTP_OK);
         response.setHeader("Content-Type", "text/plain");
-        response.setHeader("Connection", "close");
         response.setBody("Upload successful");
         return response;
     }
@@ -573,7 +568,6 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
     else
         response.setStatus(HTTP_CREATED);
     response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
     response.setBody("Upload successful");
     return response;
 }
@@ -591,7 +585,6 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
     HttpResponse response;
     response.setStatus(HTTP_OK);
     response.setHeader("Content-Type", "text/plain");
-    response.setHeader("Connection", "close");
     response.setBody("Delete successful");
     return response;
 }

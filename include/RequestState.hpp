@@ -35,12 +35,14 @@ struct RequestState
     std::size_t pos;
     std::size_t contentLength;
     std::size_t chunkSize;
+    bool keepAlive;
 
     RequestState()
         : stage(STAGE_REQUEST_LINE),
           pos(0),
           contentLength(0),
-          chunkSize(0)
+          chunkSize(0),
+          keepAlive(false)
     {
     }
 
@@ -51,6 +53,7 @@ struct RequestState
         pos = 0;
         contentLength = 0;
         chunkSize = 0;
+        keepAlive = false;
     }
 };
 

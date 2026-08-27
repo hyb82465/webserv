@@ -111,6 +111,16 @@ StageResult RequestParser::parseHeadersStage(
     state.request._status = parseHeaders(headers, state.request);
     if (state.request._status != HTTP_OK)
         return STAGE_ERROR;
+    std::map<std::string, std::string>::const_iterator connection =
+        state.request._headers.find("connection");
+    if (state.request._version == "HTTP/1.1")
+    {
+        // HTTP/1.1 default connection: keep-alive
+        state.keepAlive = true;
+        if (connection != state.request._headers.end()
+            && Utils::toLower(connection->second) == "close")
+            state.keepAlive = false;
+    }
     std::map<std::string, std::string>::iterator host =
         state.request._headers.find("host");
     if (host == state.request._headers.end() || host->second.empty())

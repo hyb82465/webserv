@@ -30,6 +30,8 @@ private:
     bool setNonBlocking(int fd);
     int setupListenSocket(const ListenConfig &listenConfig);
     void removeClient(int fd, std::size_t i);
+    const LocationConfig *findLocation(const ServerConfig &config, const std::string &path) const;
+    void processRequest(int fd, std::size_t &i);
     void acceptClient(int listenFd);
     void handleRead(int fd, std::size_t &i);
     void handleWrite(int fd, std::size_t &i);
@@ -46,8 +48,6 @@ private:
     void addCgiPollFds(CgiHandler *cgi);
     void checkCgiChildren();
 
-    
-    const LocationConfig *findLocation(const ServerConfig &config, const std::string &path) const;
     std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
     std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
 

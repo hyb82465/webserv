@@ -147,6 +147,108 @@ void Server::removeClient(int fd, std::size_t i)
     _pollFds.erase(_pollFds.begin() + i);
 }
 
+const LocationConfig *Server::findLocation(const ServerConfig &config, const std::string &path) const
+{
+    const std::vector<LocationConfig> &locations = config.getLocations();
+    const LocationConfig *best = NULL;
+    for (std::size_t i = 0; i < locations.size(); ++i)
+    {
+        const std::string &locationPath = locations[i].getPath();
+        if (locationPath.empty())
+            continue;
+        bool match = false;
+        if (path == locationPath)
+            match = true;
+        else if  (locationPath == "/")
+            match = true;
+        else if (path.size() > locationPath.size() 
+                && path.compare(0, locationPath.size(), locationPath) == 0
+                && (path[locationPath.size()] == '/' || locationPath[locationPath.size() - 1] == '/'))
+            match = true;
+        if (match)
+        {
+            if (best == NULL || locationPath.size() > best->getPath().size())
+            best = &locations[i];
+        }
+    }
+    return best;
+}
+
+void Server::processRequest(int fd, std::size_t &i)
+{
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it == _clients.end())
+    {
+        std::cerr << "client not found" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    std::size_t serverIndex = it->second.getServerIndex();
+    if (serverIndex >= _configs.size())
+    {
+        std::cerr << "invalid server index" << std::endl;
+        removeClient(fd, i);
+        return ;
+    }
+    const ServerConfig &config = _configs[serverIndex];
+    RequestState &state = it->second.getRequestState();
+    HttpRequest &request = state.request;
+    RequestParser parser;
+    std::size_t maxBodySize = config.getClientMaxBodySize();
+    ParseResult result = parser.parse(it->second.getReadBuffer(), state, maxBodySize);
+    if (result == PARSE_INCOMPLETE)
+    {
+        // std::cout << "request incomplete" << std::endl;
+        ++i;
+        return ;
+    }
+    else if (result == PARSE_ERROR)
+    {
+        std::cout << "parse error, status = "
+                  << request.getStatus()
+                  << std::endl;
+        state.keepAlive = false;
+        RequestHandler handler(config);
+        HttpResponse response = handler.handleError(request.getStatus());
+        response.setHeader("Connection", "close");
+        it->second.setWriteBuffer(response.getResponse());
+        _pollFds[i].events = POLLOUT;
+        ++i;
+        return ;
+    }
+    const LocationConfig *location = findLocation(config, request.getPath());
+    if (location != NULL && !location->getCgi().empty())
+    {
+        std::string executable = findCgiExecutable(request.getPath(), *location);
+        if (!executable.empty())
+        {
+            try
+            {
+                startCgi(fd, request, *location, executable);
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "CGI failed: " << e.what() << std::endl;
+                RequestHandler handler(config);
+                HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+                it->second.setWriteBuffer(response.getResponse());
+                _pollFds[i].events = POLLOUT;
+            }
+            ++i;
+            return;
+        }
+    }
+    RequestHandler handler(config);
+    HttpResponse response = handler.handle(request);
+    if (state.keepAlive)
+        response.setHeader("Connection", "keep-alive");
+    else
+        response.setHeader("Connection", "close");
+    it->second.setWriteBuffer(response.getResponse());
+    _pollFds[i].events = POLLOUT;
+    ++i;
+}
+
 void Server::acceptClient(int listenFd)
 {
     // accept
@@ -194,39 +296,6 @@ void Server::acceptClient(int listenFd)
     std::cout << "client connected, fd = " << clientFd << std::endl;
 }
 
-const LocationConfig *Server::findLocation(const ServerConfig &config, const std::string &path) const
-{
-    const std::vector<LocationConfig> &locations = config.getLocations();
-
-    const LocationConfig *best = NULL;
-
-    for (std::size_t i = 0; i < locations.size(); ++i)
-    {
-        const std::string &locationPath = locations[i].getPath();
-        if (locationPath.empty())
-            continue;
-
-        bool match = false;
-
-        if (path == locationPath)
-            match = true;
-        else if  (locationPath == "/")
-            match = true;
-        else if (path.size() > locationPath.size() 
-                && path.compare(0, locationPath.size(), locationPath) == 0
-                && (path[locationPath.size()] == '/' || locationPath[locationPath.size() - 1] == '/'))
-            match = true;
-            
-        if (match)
-        {
-            if (best == NULL || locationPath.size() > best->getPath().size())
-            best = &locations[i];
-        }    
-        
-    }
-    return best;
-}
-
 void Server::handleRead(int fd, std::size_t &i)
 {
     // recv
@@ -256,94 +325,7 @@ void Server::handleRead(int fd, std::size_t &i)
         return ;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
-    std::size_t serverIndex = it->second.getServerIndex();
-    if (serverIndex >= _configs.size())
-    {
-        std::cerr << "invalid server index" << std::endl;
-        removeClient(fd, i);
-        return ;
-    }
-    const ServerConfig &config = _configs[serverIndex];
-
-    RequestState &state = it->second.getRequestState();
-    HttpRequest &request = state.request;
-    RequestParser parser;
-    std::size_t maxBodySize = config.getClientMaxBodySize();
-    ParseResult result = parser.parse(it->second.getReadBuffer(), state, maxBodySize);
-
-    // std::cout << "parse result = " << result
-    //       << ", stage = " << state.stage
-    //       << ", status = " << state.request.getStatus()
-    //       << ", method = [" << state.request.getMethod() << "]"
-    //       << ", path = [" << state.request.getPath() << "]"
-    //       << ", body size = " << state.request.getBody().size()
-    //       << std::endl;
-
-    if (result == PARSE_INCOMPLETE)
-    {
-        // std::cout << "request incomplete" << std::endl;
-        ++i;
-        return ;
-    }
-    else if (result == PARSE_ERROR)
-    {
-        std::cout << "parse error, status = "
-                  << request.getStatus()
-                  << std::endl;
-                  RequestHandler handler(config);
-                  HttpResponse response = handler.handleError(request.getStatus());
-                  it->second.setWriteBuffer(response.getResponse());
-                  _pollFds[i].events = POLLOUT;
-                  ++i;
-                  return ;
-                }
-                
-                std::cout << "method: "
-                << request.getMethod()
-                << std::endl;
-                std::cout << "path: "
-                << request.getPath()
-                << std::endl;
-                std::cout << "body: "
-                << request.getBody()
-                << std::endl;
-                
-                std::cout << it->second.getReadBuffer() << std::endl;
-                
-    const LocationConfig *location = findLocation(config, request.getPath());
-
-    if (location != NULL && !location->getCgi().empty())
-    {
-        std::string executable = findCgiExecutable(request.getPath(), *location);
-        if (!executable.empty())
-        {
-            try
-            {
-                startCgi(fd, request, *location, executable);
-            }
-            catch (const std::exception &e)
-            {
-                std::cerr << "CGI failed: " << e.what() << std::endl;
-
-                RequestHandler handler(config);
-
-                HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
-
-                it->second.setWriteBuffer(response.getResponse());
-
-                _pollFds[i].events = POLLOUT;
-            }
-
-            ++i;
-            return;
-        }
-    }
-    RequestHandler handler(config);
-    HttpResponse response = handler.handle(request);
-    it->second.setWriteBuffer(response.getResponse());
-
-    _pollFds[i].events = POLLOUT;
-    ++i;
+    processRequest(fd, i);
 }
 
 void Server::handleWrite(int fd, std::size_t &i)
@@ -377,7 +359,23 @@ void Server::handleWrite(int fd, std::size_t &i)
     if (it->second.getBytesSent() >= response.size())
     {
         std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
-        removeClient(fd, i);
+        RequestState &state = it->second.getRequestState();
+        if (!state.keepAlive)
+        {
+            removeClient(fd, i);
+            return ;
+        }
+        it->second.consumeReadBuffer(state.pos);
+        it->second.clearWriteBuffer();
+        it->second.resetBytesSent();
+        it->second.resetRequestState();
+        if (!it->second.getReadBuffer().empty())
+        {
+            processRequest(fd, i);
+            return ;
+        }
+        _pollFds[i].events = POLLIN;
+        ++i;
         return ;
     }
     ++i;

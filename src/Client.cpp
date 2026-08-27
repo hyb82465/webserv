@@ -70,6 +70,24 @@ void Client::resetRequestState()
     _requestState.reset();
 }
 
+void Client::clearWriteBuffer()
+{
+    _writeBuffer.clear();
+}
+
+void Client::resetBytesSent()
+{
+    _bytesSent = 0;
+}
+
+void Client::consumeReadBuffer(std::size_t count)
+{
+    if (count >= _readBuffer.size())
+        _readBuffer.clear();
+    else
+        _readBuffer.erase(0, count);
+}
+
 void Client::appendToReadBuffer(const char *data, std::size_t length)
 {
     _readBuffer.append(data, length);

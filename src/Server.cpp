@@ -447,8 +447,7 @@ void Server::handleCgiRead(int fd, std::size_t &i)
 }
 CgiHandler *Server::getCgiByFd(int fd)
 {
-     std::map<int, CgiHandler *>::iterator it =
-        _cgiFds.find(fd);
+     std::map<int, CgiHandler *>::iterator it = _cgiFds.find(fd);
 
     if (it == _cgiFds.end())
         return NULL;
@@ -518,23 +517,13 @@ void Server::finishCgi(CgiHandler *cgi)
 
     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
 
-    /*
-     * Client disappeared while CGI
-     * was running.
-     */
+    //Client disappeared while CGI was running.
     if (clientIt == _clients.end())
     {
         removeCgi(cgi);
         return;
     }
 
-    /*
-     * CGI output
-     *
-     * CGI headers/body
-     *       ↓
-     * HTTP response
-     */
     std::string response;
     if (cgi->isChildSuccess())
     {
@@ -550,9 +539,7 @@ void Server::finishCgi(CgiHandler *cgi)
 
     clientIt->second.setWriteBuffer(response);
 
-    /*
-     * Client now waits for POLLOUT.
-     */
+    //Client now waits for POLLOUT.
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd == clientFd)
@@ -563,25 +550,20 @@ void Server::finishCgi(CgiHandler *cgi)
         }
     }
 
-    /*
-     * Now CGI is completely finished.
-     */
     removeCgi(cgi);
 }
 void Server::removePollFd(int fd)
 {
-    for (std::size_t i = 0;
-         i < _pollFds.size();
-         ++i)
+    for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd == fd)
         {
-            _pollFds.erase(
-                _pollFds.begin() + i);
+            _pollFds.erase(_pollFds.begin() + i);
             return;
         }
     }
 }
+
 void Server::addCgiPollFds(CgiHandler *cgi)
 {
 if (cgi == NULL)
@@ -591,32 +573,26 @@ if (cgi == NULL)
     {
         struct pollfd stdinPoll;
 
-        stdinPoll.fd =
-            cgi->getStdinFd();
+        stdinPoll.fd = cgi->getStdinFd();
 
-        stdinPoll.events =
-            POLLOUT;
+        stdinPoll.events = POLLOUT;
 
         stdinPoll.revents = 0;
 
-        _pollFds.push_back(
-            stdinPoll);
+        _pollFds.push_back(stdinPoll);
     }
 
     if (cgi->getStdoutFd() != -1)
     {
         struct pollfd stdoutPoll;
 
-        stdoutPoll.fd =
-            cgi->getStdoutFd();
+        stdoutPoll.fd = cgi->getStdoutFd();
 
-        stdoutPoll.events =
-            POLLIN;
+        stdoutPoll.events = POLLIN;
 
         stdoutPoll.revents = 0;
 
-        _pollFds.push_back(
-            stdoutPoll);
+        _pollFds.push_back(stdoutPoll);
     }
 }
 
@@ -625,8 +601,7 @@ void Server::checkCgiChildren()
     for (std::size_t i = 0;
          i < _cgiHandlers.size();)
     {
-        CgiHandler *cgi =
-            _cgiHandlers[i];
+        CgiHandler *cgi = _cgiHandlers[i];
 
         if (!cgi->isStdoutOpen())
         {
@@ -641,7 +616,6 @@ void Server::checkCgiChildren()
         ++i;
     }
 }
-
 
 
 std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const

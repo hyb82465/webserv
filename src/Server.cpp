@@ -683,9 +683,7 @@ std::string Server::buildCgiResponse(const std::string &output) const
         separatorLength = 2;
     }
 
-    /*
-     * CGI returned no headers.
-     */
+    //CGI returned no headers.
     if (pos == std::string::npos)
     {
         std::string response;
@@ -715,9 +713,8 @@ std::string Server::buildCgiResponse(const std::string &output) const
 
     response += headers;
 
-    /*
-     * Add Content-Length.
-     */
+    
+    //Add Content-Length
     response += "\r\nContent-Length: " + toString(body.size());
 
     response += "\r\nConnection: close\r\n";

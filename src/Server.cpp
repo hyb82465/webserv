@@ -230,6 +230,7 @@ void Server::processRequest(int fd, std::size_t &i)
             catch (const std::exception &e)
             {
                 std::cerr << "CGI failed: " << e.what() << std::endl;
+                state.keepAlive = false;
                 RequestHandler handler(config);
                 HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
                 it->second.setWriteBuffer(response.getResponse());
@@ -241,6 +242,12 @@ void Server::processRequest(int fd, std::size_t &i)
     }
     RequestHandler handler(config);
     HttpResponse response = handler.handle(request);
+    if (request.getMethod() != "GET"
+        && request.getMethod() != "POST"
+        && request.getMethod() != "DELETE")
+    {
+        state.keepAlive = false;
+    }
     if (state.keepAlive)
         response.setHeader("Connection", "keep-alive");
     else

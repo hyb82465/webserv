@@ -36,7 +36,6 @@ Server::~Server()
     }
 
     _cgiHandlers.clear();
-
     _cgiFds.clear();
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {

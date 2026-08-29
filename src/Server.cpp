@@ -498,43 +498,36 @@ void Server::finishCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
-
     int clientFd = cgi->getClientFd();
-
     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
-
     // Client disappeared while CGI was running.
     if (clientIt == _clients.end())
     {
         removeCgi(cgi);
         return;
     }
-
+    RequestState &state = clientIt->second.getRequestState();
     std::string response;
     if (cgi->isChildSuccess())
-    {
         response = buildCgiResponse(cgi->getOutput());
-    }
     else
     {
+        state.keepAlive = false;
         RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
         HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+        error.setHeader("Connection", "close");
         response = error.getResponse();
     }
-
     clientIt->second.setWriteBuffer(response);
-
     // Client now waits for POLLOUT.
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd == clientFd)
         {
             _pollFds[i].events = POLLOUT;
-
             break;
         }
     }
-
     removeCgi(cgi);
 }
 void Server::removePollFd(int fd)
@@ -711,48 +704,18 @@ std::string Server::toString(std::size_t value) const
 void Server::checkCgiTimeouts()
 {
     const int CGI_TIMEOUT = 5;
-
     std::size_t i = 0;
-
     while (i < _cgiHandlers.size())
     {
         CgiHandler *cgi = _cgiHandlers[i];
-
         if (!cgi->hasTimedOut(CGI_TIMEOUT))
         {
             ++i;
             continue;
         }
-
         std::cout << "CGI timeout" << std::endl;
-
-        int clientFd = cgi->getClientFd();
-
         cgi->killChild();
-
         finishCgi(cgi);
-
-        std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
-
-        if (clientIt != _clients.end())
-        {
-            RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
-
-            HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
-
-            clientIt->second.setWriteBuffer(error.getResponse());
-
-            for (std::size_t j = 0; j < _pollFds.size(); ++j)
-            {
-                if (_pollFds[j].fd == clientFd)
-                {
-                    _pollFds[j].events = POLLOUT;
-                    break;
-                }
-            }
-        }
-
-        removeCgi(cgi);
     }
 }
 

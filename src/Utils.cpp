@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cctype>
+#include <sstream>
 
 std::string Utils::trim(const std::string &line)
 {
@@ -21,10 +22,16 @@ std::string Utils::toLower(const std::string &str)
     {
         result[i] = static_cast<char>(
             std::tolower(
-                static_cast<unsigned char>(result[i]))
-        );
+                static_cast<unsigned char>(result[i])));
     }
     return result;
+}
+
+std::string Utils::sizetToString(std::size_t n)
+{
+    std::stringstream ss;
+    ss << n;
+    return ss.str();
 }
 
 bool Utils::decodeUri(std::string &path)
@@ -35,12 +42,11 @@ bool Utils::decodeUri(std::string &path)
         if (path[i] != '%')
         {
             decoded += path[i];
-            continue ;
+            continue;
         }
         if (i + 2 >= path.size())
             return false;
-        if (!std::isxdigit(static_cast<unsigned char>(path[i + 1]))
-            || !std::isxdigit(static_cast<unsigned char>(path[i + 2])))
+        if (!std::isxdigit(static_cast<unsigned char>(path[i + 1])) || !std::isxdigit(static_cast<unsigned char>(path[i + 2])))
             return false;
         std::string hex = path.substr(i + 1, 2);
         unsigned int value;

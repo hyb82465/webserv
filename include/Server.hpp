@@ -49,10 +49,7 @@ private:
 
     std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
     std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
-
     std::string buildCgiResponse(const std::string &output, bool keepAlive) const;
-    std::string toString(std::size_t value) const;
-
     void checkCgiTimeouts();
 
 public:

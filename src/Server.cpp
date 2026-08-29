@@ -4,6 +4,7 @@
 #include "HttpResponse.hpp"
 #include "RequestHandler.hpp"
 #include "Signal.hpp"
+#include "Utils.hpp"
 #include <sys/socket.h>
 #include <netdb.h>
 #include <poll.h>
@@ -653,7 +654,7 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
         std::string response;
         response += "HTTP/1.1 200 OK\r\n";
         response += "Content-Type: text/html\r\n";
-        response += "Content-Length: " + toString(output.size()) + "\r\n";
+        response += "Content-Length: " + Utils::sizetToString(output.size()) + "\r\n";
         if (keepAlive)
             response += "Connection: keep-alive\r\n";
         else
@@ -668,7 +669,7 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
     response += "HTTP/1.1 200 OK\r\n";
     response += headers;
     // Add Content-Length
-    response += "\r\nContent-Length: " + toString(body.size());
+    response += "\r\nContent-Length: " + Utils::sizetToString(body.size());
     if (keepAlive)
         response += "Connection: keep-alive\r\n";
     else
@@ -676,15 +677,6 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
     response += "\r\n";
     response += body;
     return response;
-}
-
-std::string Server::toString(std::size_t value) const
-{
-    std::ostringstream stream;
-
-    stream << value;
-
-    return stream.str();
 }
 
 void Server::checkCgiTimeouts()

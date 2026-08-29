@@ -199,6 +199,7 @@ void Server::processRequest(int fd, std::size_t &i)
     if (result == PARSE_INCOMPLETE)
     {
         // std::cout << "request incomplete" << std::endl;
+        _pollFds[i].events = POLLIN;
         ++i;
         return ;
     }

@@ -509,7 +509,7 @@ void Server::finishCgi(CgiHandler *cgi)
     RequestState &state = clientIt->second.getRequestState();
     std::string response;
     if (cgi->isChildSuccess())
-        response = buildCgiResponse(cgi->getOutput());
+        response = buildCgiResponse(cgi->getOutput(), state.keepAlive);
     else
     {
         state.keepAlive = false;
@@ -638,57 +638,43 @@ std::string Server::buildCgiScriptPath(const std::string &path, const LocationCo
     return root + path;
 }
 
-std::string Server::buildCgiResponse(const std::string &output) const
+std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) const
 {
     std::string::size_type pos = output.find("\r\n\r\n");
-
     std::size_t separatorLength = 4;
-
     if (pos == std::string::npos)
     {
         pos = output.find("\n\n");
         separatorLength = 2;
     }
-
     // CGI returned no headers.
     if (pos == std::string::npos)
     {
         std::string response;
-
         response += "HTTP/1.1 200 OK\r\n";
-
         response += "Content-Type: text/html\r\n";
-
         response += "Content-Length: " + toString(output.size()) + "\r\n";
-
-        response += "Connection: close\r\n";
-
+        if (keepAlive)
+            response += "Connection: keep-alive\r\n";
+        else
+            response += "Connection: close\r\n";
         response += "\r\n";
-
         response += output;
-
         return response;
     }
-
     std::string headers = output.substr(0, pos);
-
     std::string body = output.substr(pos + separatorLength);
-
     std::string response;
-
     response += "HTTP/1.1 200 OK\r\n";
-
     response += headers;
-
     // Add Content-Length
     response += "\r\nContent-Length: " + toString(body.size());
-
-    response += "\r\nConnection: close\r\n";
-
+    if (keepAlive)
+        response += "Connection: keep-alive\r\n";
+    else
+        response += "Connection: close\r\n";
     response += "\r\n";
-
     response += body;
-
     return response;
 }
 

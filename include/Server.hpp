@@ -1,13 +1,13 @@
 #ifndef SERVER_HPP
-# define SERVER_HPP
+#define SERVER_HPP
 
-# include "Client.hpp"
-# include "ServerConfig.hpp"
-# include "CgiHandler.hpp"
-# include <map>
-# include <vector>
-# include <poll.h>
-# include <string>
+#include "Client.hpp"
+#include "ServerConfig.hpp"
+#include "CgiHandler.hpp"
+#include <map>
+#include <vector>
+#include <poll.h>
+#include <string>
 
 class Server
 {
@@ -20,7 +20,7 @@ private:
     std::map<int, CgiHandler *> _cgiFds;
     std::vector<CgiHandler *> _cgiHandlers;
 
-    std::vector<ServerConfig>  _configs;
+    std::vector<ServerConfig> _configs;
 
     Server();
     Server(const Server &other);
@@ -30,14 +30,13 @@ private:
     bool setNonBlocking(int fd);
     int setupListenSocket(const ListenConfig &listenConfig);
     void removeClient(int fd, std::size_t i);
-    const LocationConfig *findLocation(const ServerConfig &config, const std::string &path) const;
     void processRequest(int fd, std::size_t &i);
     void acceptClient(int listenFd);
     void handleRead(int fd, std::size_t &i);
     void handleWrite(int fd, std::size_t &i);
 
     void startCgi(int clientFd, const HttpRequest &request,
-    const LocationConfig &location, const std::string &executable);
+                  const LocationConfig &location, const std::string &executable);
     void handleCgiWrite(int fd, std::size_t &i);
     void handleCgiRead(int fd, std::size_t &i);
     CgiHandler *getCgiByFd(int fd);
@@ -55,6 +54,7 @@ private:
     std::string toString(std::size_t value) const;
 
     void checkCgiTimeouts();
+
 public:
     Server(const std::vector<ServerConfig> &_configs);
     ~Server();

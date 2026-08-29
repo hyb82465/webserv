@@ -1,13 +1,13 @@
 #ifndef REQUESTHANDLER_HPP
-# define REQUESTHANDLER_HPP
+#define REQUESTHANDLER_HPP
 
-# include "HttpRequest.hpp"
-# include "HttpResponse.hpp"
-# include "ServerConfig.hpp"
-# include "LocationConfig.hpp"
-# include <string>
-# include <map>
-# include <vector>
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "ServerConfig.hpp"
+#include "LocationConfig.hpp"
+#include <string>
+#include <map>
+#include <vector>
 
 struct MultipartPart
 {
@@ -32,13 +32,13 @@ private:
     HttpResponse autoindexResponse(
         const std::string &path,
         const std::string &requestPath);
-    HttpResponse badRequest(); // 400
-    HttpResponse forbidden(); //403
-    HttpResponse notFound(); // 404
-    HttpResponse methodNotAllowed(); // 405
-    HttpResponse payloadTooLarge(); // 413
+    HttpResponse badRequest();          // 400
+    HttpResponse forbidden();           // 403
+    HttpResponse notFound();            // 404
+    HttpResponse methodNotAllowed();    // 405
+    HttpResponse payloadTooLarge();     // 413
     HttpResponse internalServerError(); // 500
-    HttpResponse notImplemented(); // 501
+    HttpResponse notImplemented();      // 501
     HttpResponse versionNotSupported(); // 505
 
     HttpResponse redirect(HttpStatus status, const std::string &url);
@@ -46,11 +46,10 @@ private:
     std::string getBoundary(const HttpRequest &request);
     std::vector<MultipartPart> parseMultipart(
         const std::string &body,
-        const std::string &boundary
-    );
+        const std::string &boundary);
     bool writeFile(const std::string &path, const std::string &data);
     std::string generateAutoindex(const std::string &path, const std::string &requestPath);
-    const LocationConfig *findLocation(const ServerConfig &server, const std::string &requestPath);
+    const LocationConfig *findLocation(const ServerConfig &server, const std::string &requestPath) const;
     std::string buildPath(const LocationConfig *location, const std::string &requestPath);
     std::string getRoot(const LocationConfig *location) const;
     std::string getIndex(const LocationConfig *location) const;
@@ -62,12 +61,14 @@ private:
     HttpResponse handleGet(const HttpRequest &request, const LocationConfig *location);
     HttpResponse handlePost(const HttpRequest &request, const LocationConfig *location);
     HttpResponse handleDelete(const HttpRequest &request, const LocationConfig *location);
+
 public:
     RequestHandler(const ServerConfig &config);
     ~RequestHandler();
 
     HttpResponse handle(const HttpRequest &request);
     HttpResponse handleError(HttpStatus status);
+    const LocationConfig *getLocation(const HttpRequest &request) const;
 };
 
 #endif

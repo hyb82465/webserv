@@ -10,10 +10,12 @@
 #include <iostream>
 
 RequestHandler::RequestHandler(const ServerConfig &config) : _server(config)
-{}
+{
+}
 
 RequestHandler::~RequestHandler()
-{}
+{
+}
 
 HttpResponse RequestHandler::errorResponse(
     HttpStatus status,
@@ -64,48 +66,42 @@ HttpResponse RequestHandler::badRequest()
 {
     return errorResponse(
         HTTP_BAD_REQUEST,
-        "400 Bad Request"
-    );
+        "400 Bad Request");
 }
 
 HttpResponse RequestHandler::forbidden()
 {
     return errorResponse(
         HTTP_FORBIDDEN,
-        "403 Forbidden"
-    );
+        "403 Forbidden");
 }
 
 HttpResponse RequestHandler::notFound()
 {
     return errorResponse(
         HTTP_NOT_FOUND,
-        "404 Not Found"
-    );
+        "404 Not Found");
 }
 
 HttpResponse RequestHandler::methodNotAllowed()
 {
     return errorResponse(
         HTTP_METHOD_NOT_ALLOWED,
-        "405 Method Not Allowed"
-    );
+        "405 Method Not Allowed");
 }
 
 HttpResponse RequestHandler::payloadTooLarge()
 {
     return errorResponse(
         HTTP_PAYLOAD_TOO_LARGE,
-        "413 Payload Too Large"
-    );
+        "413 Payload Too Large");
 }
 
 HttpResponse RequestHandler::internalServerError()
 {
     return errorResponse(
         HTTP_INTERNAL_SERVER_ERROR,
-        "500 Internal Server Error"
-    );
+        "500 Internal Server Error");
 }
 
 // HttpResponse RequestHandler::notImplemented()
@@ -120,8 +116,7 @@ HttpResponse RequestHandler::versionNotSupported()
 {
     return errorResponse(
         HTTP_VERSION_NOT_SUPPORTED,
-        "505 Version Not Supported"
-    );
+        "505 Version Not Supported");
 }
 
 HttpResponse RequestHandler::redirect(
@@ -172,7 +167,7 @@ std::string RequestHandler::getBoundary(const HttpRequest &request)
     return contentType.substr(pos + key.size());
 }
 
-std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body,const std::string &boundary)
+std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body, const std::string &boundary)
 {
     std::vector<MultipartPart> parts;
     std::string delimiter = "--" + boundary;
@@ -181,7 +176,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
     {
         pos += delimiter.size();
         if (body.compare(pos, 2, "--") == 0)
-            break ;
+            break;
         if (body.compare(pos, 2, "\r\n") != 0)
             return parts;
         pos += 2;
@@ -192,8 +187,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
         std::size_t partEnd = next;
         if (partEnd < 2)
             return parts;
-        if (body[partEnd - 2] != '\r'
-            || body[partEnd - 1] != '\n')
+        if (body[partEnd - 2] != '\r' || body[partEnd - 1] != '\n')
             return parts;
         partEnd -= 2;
         std::string part = body.substr(pos, partEnd - pos);
@@ -228,7 +222,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
             std::string value = Utils::trim(line.substr(colon + 1));
             current.headers[key] = value;
             if (endHeader == std::string::npos)
-                break ;
+                break;
             startHeader = endHeader + 2;
         }
         std::map<std::string, std::string>::const_iterator it =
@@ -249,7 +243,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
                 return parts;
             current.name = disposition.substr(nameStart, nameEnd - nameStart);
         }
-        
+
         std::size_t filenamePos = disposition.find(filenameKey);
         if (filenamePos != std::string::npos)
         {
@@ -269,14 +263,13 @@ bool RequestHandler::writeFile(const std::string &path, const std::string &data)
 {
     std::ofstream file(
         path.c_str(),
-        std::ios::out | std::ios::binary
-    );
+        std::ios::out | std::ios::binary);
     if (!file.is_open())
         return false;
     file.write(data.data(), data.size());
     if (!file)
         return false;
-    return true ;
+    return true;
 }
 
 std::string RequestHandler::generateAutoindex(const std::string &path, const std::string &requestPath)
@@ -293,10 +286,10 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
     {
         std::string name = entry->d_name;
         if (name == "." || name == "..")
-            continue ;
+            continue;
         std::string href = requestPath;
         if (!href.empty() && href[href.size() - 1] != '/')
-            href += "/";   
+            href += "/";
         href += name;
         std::string entryPath = path + name;
         struct stat info;
@@ -304,7 +297,7 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
         {
             closedir(dir);
             return "";
-        }   
+        }
         if (S_ISDIR(info.st_mode))
         {
             href += "/";
@@ -324,7 +317,7 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
 
 const LocationConfig *RequestHandler::findLocation(
     const ServerConfig &server,
-    const std::string &requestPath)
+    const std::string &requestPath) const
 {
     const std::vector<LocationConfig> &locations = server.getLocations();
     const LocationConfig *best = NULL;
@@ -332,7 +325,7 @@ const LocationConfig *RequestHandler::findLocation(
     {
         const std::string &locationPath = locations[i].getPath();
         if (locationPath.empty())
-            continue ;
+            continue;
         bool match = false;
         if (requestPath == locationPath)
             match = true;
@@ -340,17 +333,13 @@ const LocationConfig *RequestHandler::findLocation(
             match = true;
         else if (locationPath == "/")
             match = true;
-        else if (requestPath.size() > locationPath.size()
-            && requestPath.compare(0, locationPath.size(), locationPath) == 0
-            && (requestPath[locationPath.size()] == '/'
-            || locationPath[locationPath.size() - 1] == '/'))
+        else if (requestPath.size() > locationPath.size() && requestPath.compare(0, locationPath.size(), locationPath) == 0 && (requestPath[locationPath.size()] == '/' || locationPath[locationPath.size() - 1] == '/'))
             match = true;
         if (match)
         {
-            if (best == NULL
-                || locationPath.size() > best->getPath().size())
+            if (best == NULL || locationPath.size() > best->getPath().size())
                 best = &locations[i];
-        }    
+        }
     }
     return best;
 }
@@ -378,12 +367,8 @@ std::string RequestHandler::buildPath(const LocationConfig *location, const std:
             relativePath = "/" + requestPath.substr(locationPath.size());
         else
             relativePath = requestPath.substr(locationPath.size());
-
     }
-    if (!root.empty()
-        && root[root.size() - 1] == '/'
-        && !relativePath.empty()
-        && relativePath[0] == '/')
+    if (!root.empty() && root[root.size() - 1] == '/' && !relativePath.empty() && relativePath[0] == '/')
         root.erase(root.size() - 1);
     return root + relativePath;
 }
@@ -440,7 +425,7 @@ bool RequestHandler::hasParentTraversal(const std::string &path)
         if (part == "..")
             return true;
         if (end == std::string::npos)
-            break ;
+            break;
         start = end + 1;
     }
     return false;
@@ -486,7 +471,7 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
                 if (!autoindex)
                     return notFound();
                 return autoindexResponse(path, request.getPath());
-            }    
+            }
         }
         else
         {
@@ -599,8 +584,7 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
     {
         return redirect(
             HTTP_MOVED_PERMANENTLY,
-            requestPath + "/"
-        );
+            requestPath + "/");
     }
     const std::string &requestMethod = request.getMethod();
     // if (requestMethod != "GET"
@@ -613,8 +597,7 @@ HttpResponse RequestHandler::handle(const HttpRequest &request)
     {
         return redirect(
             static_cast<HttpStatus>(location->getRedirectCode()),
-            location->getRedirectUrl()
-        );
+            location->getRedirectUrl());
     }
     if (requestMethod == "GET")
         return handleGet(request, location);
@@ -629,13 +612,19 @@ HttpResponse RequestHandler::handleError(HttpStatus status)
 {
     switch (status)
     {
-        case HTTP_BAD_REQUEST:
-            return badRequest();
-        case HTTP_PAYLOAD_TOO_LARGE:
-            return payloadTooLarge();
-        case HTTP_VERSION_NOT_SUPPORTED:
-            return versionNotSupported();
-        default:
-            return internalServerError();
+    case HTTP_BAD_REQUEST:
+        return badRequest();
+    case HTTP_PAYLOAD_TOO_LARGE:
+        return payloadTooLarge();
+    case HTTP_VERSION_NOT_SUPPORTED:
+        return versionNotSupported();
+    default:
+        return internalServerError();
     }
+}
+
+const LocationConfig *RequestHandler::getLocation(
+    const HttpRequest &request) const
+{
+    return findLocation(_server, request.getPath());
 }

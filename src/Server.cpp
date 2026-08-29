@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <sstream>
 
-Server::Server(const std::vector<ServerConfig> &configs) 
+Server::Server(const std::vector<ServerConfig> &configs)
     : _configs(configs)
 {
     if (_configs.empty())
@@ -75,7 +75,7 @@ int Server::setupListenSocket(const ListenConfig &listenConfig)
         std::cerr << "socket failed" << std::endl;
         return -1;
     }
-    
+
     // non-blocking
     if (!setNonBlocking(fd))
     {
@@ -92,9 +92,9 @@ int Server::setupListenSocket(const ListenConfig &listenConfig)
     struct addrinfo hints;
     struct addrinfo *result = NULL;
     std::memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET; // IPv4
+    hints.ai_family = AF_INET;       // IPv4
     hints.ai_socktype = SOCK_STREAM; // TCP
-    hints.ai_flags = AI_PASSIVE; // server bind() address
+    hints.ai_flags = AI_PASSIVE;     // server bind() address
 
     std::stringstream ss;
     ss << listenConfig.getPort();
@@ -146,33 +146,6 @@ void Server::removeClient(int fd, std::size_t i)
     _pollFds.erase(_pollFds.begin() + i);
 }
 
-const LocationConfig *Server::findLocation(const ServerConfig &config, const std::string &path) const
-{
-    const std::vector<LocationConfig> &locations = config.getLocations();
-    const LocationConfig *best = NULL;
-    for (std::size_t i = 0; i < locations.size(); ++i)
-    {
-        const std::string &locationPath = locations[i].getPath();
-        if (locationPath.empty())
-            continue;
-        bool match = false;
-        if (path == locationPath)
-            match = true;
-        else if  (locationPath == "/")
-            match = true;
-        else if (path.size() > locationPath.size() 
-                && path.compare(0, locationPath.size(), locationPath) == 0
-                && (path[locationPath.size()] == '/' || locationPath[locationPath.size() - 1] == '/'))
-            match = true;
-        if (match)
-        {
-            if (best == NULL || locationPath.size() > best->getPath().size())
-            best = &locations[i];
-        }
-    }
-    return best;
-}
-
 void Server::processRequest(int fd, std::size_t &i)
 {
     std::map<int, Client>::iterator it = _clients.find(fd);
@@ -180,14 +153,14 @@ void Server::processRequest(int fd, std::size_t &i)
     {
         std::cerr << "client not found" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     std::size_t serverIndex = it->second.getServerIndex();
     if (serverIndex >= _configs.size())
     {
         std::cerr << "invalid server index" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     const ServerConfig &config = _configs[serverIndex];
     RequestState &state = it->second.getRequestState();
@@ -200,7 +173,7 @@ void Server::processRequest(int fd, std::size_t &i)
         // std::cout << "request incomplete" << std::endl;
         _pollFds[i].events = POLLIN;
         ++i;
-        return ;
+        return;
     }
     else if (result == PARSE_ERROR)
     {
@@ -214,9 +187,10 @@ void Server::processRequest(int fd, std::size_t &i)
         it->second.setWriteBuffer(response.getResponse());
         _pollFds[i].events = POLLOUT;
         ++i;
-        return ;
+        return;
     }
-    const LocationConfig *location = findLocation(config, request.getPath());
+    RequestHandler handler(config);
+    const LocationConfig *location = handler.getLocation(request);
     if (location != NULL && !location->getCgi().empty())
     {
         std::string executable = findCgiExecutable(request.getPath(), *location);
@@ -225,13 +199,14 @@ void Server::processRequest(int fd, std::size_t &i)
             try
             {
                 startCgi(fd, request, *location, executable);
+                _pollFds[i].events = 0;
             }
             catch (const std::exception &e)
             {
                 std::cerr << "CGI failed: " << e.what() << std::endl;
                 state.keepAlive = false;
-                RequestHandler handler(config);
                 HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+                response.setHeader("Connection", "close");
                 it->second.setWriteBuffer(response.getResponse());
                 _pollFds[i].events = POLLOUT;
             }
@@ -239,11 +214,8 @@ void Server::processRequest(int fd, std::size_t &i)
             return;
         }
     }
-    RequestHandler handler(config);
     HttpResponse response = handler.handle(request);
-    if (request.getMethod() != "GET"
-        && request.getMethod() != "POST"
-        && request.getMethod() != "DELETE")
+    if (request.getMethod() != "GET" && request.getMethod() != "POST" && request.getMethod() != "DELETE")
     {
         state.keepAlive = false;
     }
@@ -274,7 +246,7 @@ void Server::acceptClient(int listenFd)
     if (clientFd == -1)
     {
         std::cerr << "accept failed" << std::endl;
-        return ;
+        return;
     }
 
     // non-blocking
@@ -282,7 +254,7 @@ void Server::acceptClient(int listenFd)
     {
         std::cerr << "failed to set client socket non-blocking" << std::endl;
         close(clientFd);
-        return ;
+        return;
     }
 
     struct pollfd clientPollFd;
@@ -291,12 +263,11 @@ void Server::acceptClient(int listenFd)
     clientPollFd.revents = 0;
 
     _pollFds.push_back(clientPollFd);
-    std::map<int, std::size_t>::const_iterator it
-        = _listenServerMap.find(listenFd);
+    std::map<int, std::size_t>::const_iterator it = _listenServerMap.find(listenFd);
     if (it == _listenServerMap.end())
     {
         std::cerr << "listen fd has no server config" << std::endl;
-        return ;
+        return;
     }
     std::size_t serverIndex = it->second;
     _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex)));
@@ -316,20 +287,20 @@ void Server::handleRead(int fd, std::size_t &i)
     {
         std::cerr << "recv failed" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     else if (byteRead == 0)
     {
         std::cout << "client disconnected" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     std::map<int, Client>::iterator it = _clients.find(fd);
     if (it == _clients.end()) // should not happen
     {
         std::cerr << "client not found" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
     processRequest(fd, i);
@@ -347,20 +318,19 @@ void Server::handleWrite(int fd, std::size_t &i)
     {
         std::cerr << "client not found" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     const std::string &response = it->second.getWriteBuffer();
     ssize_t bytesSent = send(
         fd,
         response.c_str() + it->second.getBytesSent(),
         response.size() - it->second.getBytesSent(),
-        0
-    );
+        0);
     if (bytesSent <= 0)
     {
         std::cerr << "send failed" << std::endl;
         removeClient(fd, i);
-        return ;
+        return;
     }
     it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
     if (it->second.getBytesSent() >= response.size())
@@ -370,7 +340,7 @@ void Server::handleWrite(int fd, std::size_t &i)
         if (!state.keepAlive)
         {
             removeClient(fd, i);
-            return ;
+            return;
         }
         it->second.consumeReadBuffer(state.pos);
         it->second.clearWriteBuffer();
@@ -379,33 +349,33 @@ void Server::handleWrite(int fd, std::size_t &i)
         if (!it->second.getReadBuffer().empty())
         {
             processRequest(fd, i);
-            return ;
+            return;
         }
         _pollFds[i].events = POLLIN;
         ++i;
-        return ;
+        return;
     }
     ++i;
 }
 
 void Server::startCgi(int clientFd, const HttpRequest &request,
-    const LocationConfig &location, const std::string &executable)
+                      const LocationConfig &location, const std::string &executable)
 {
     std::string scriptPath = buildCgiScriptPath(request.getPath(), location);
 
-        CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
-        try
-        {
-            cgi->start(request);
-        }
-        catch (...)
-        {
-            delete cgi;
-            throw;
-        }
+    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
+    try
+    {
+        cgi->start(request);
+    }
+    catch (...)
+    {
+        delete cgi;
+        throw;
+    }
 
-        addCgi(cgi);
-        addCgiPollFds(cgi);
+    addCgi(cgi);
+    addCgiPollFds(cgi);
 }
 void Server::handleCgiWrite(int fd, std::size_t &i)
 {
@@ -426,7 +396,7 @@ void Server::handleCgiWrite(int fd, std::size_t &i)
     {
         _cgiFds.erase(fd);
         removePollFd(fd);
-        //do NOT delete CGI here. stdout is still needed.
+        // do NOT delete CGI here. stdout is still needed.
         return;
     }
 
@@ -450,7 +420,7 @@ void Server::handleCgiRead(int fd, std::size_t &i)
         _cgiFds.erase(fd);
         removePollFd(fd);
 
-      // stdout EOF doesn't necessarily mean waitpid() already succeeded.
+        // stdout EOF doesn't necessarily mean waitpid() already succeeded.
         if (cgi->waitForChild())
         {
             finishCgi(cgi);
@@ -463,7 +433,7 @@ void Server::handleCgiRead(int fd, std::size_t &i)
 }
 CgiHandler *Server::getCgiByFd(int fd)
 {
-     std::map<int, CgiHandler *>::iterator it = _cgiFds.find(fd);
+    std::map<int, CgiHandler *>::iterator it = _cgiFds.find(fd);
 
     if (it == _cgiFds.end())
         return NULL;
@@ -533,7 +503,7 @@ void Server::finishCgi(CgiHandler *cgi)
 
     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
 
-    //Client disappeared while CGI was running.
+    // Client disappeared while CGI was running.
     if (clientIt == _clients.end())
     {
         removeCgi(cgi);
@@ -544,8 +514,7 @@ void Server::finishCgi(CgiHandler *cgi)
     if (cgi->isChildSuccess())
     {
         response = buildCgiResponse(cgi->getOutput());
-
-    } 
+    }
     else
     {
         RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
@@ -555,7 +524,7 @@ void Server::finishCgi(CgiHandler *cgi)
 
     clientIt->second.setWriteBuffer(response);
 
-    //Client now waits for POLLOUT.
+    // Client now waits for POLLOUT.
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd == clientFd)
@@ -582,7 +551,7 @@ void Server::removePollFd(int fd)
 
 void Server::addCgiPollFds(CgiHandler *cgi)
 {
-if (cgi == NULL)
+    if (cgi == NULL)
         return;
 
     if (cgi->getStdinFd() != -1)
@@ -624,7 +593,7 @@ void Server::checkCgiChildren()
             if (cgi->waitForChild())
             {
                 finishCgi(cgi);
-                 //finishCgi() will remove the CGI from _cgiHandlers. Don't increment i.
+                // finishCgi() will remove the CGI from _cgiHandlers. Don't increment i.
                 continue;
             }
         }
@@ -632,7 +601,6 @@ void Server::checkCgiChildren()
         ++i;
     }
 }
-
 
 std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const
 {
@@ -656,7 +624,7 @@ std::string Server::findCgiExecutable(const std::string &path, const LocationCon
 // request /cgi-bin/test.py    get: ./www/cgi-bin/test.py
 std::string Server::buildCgiScriptPath(const std::string &path, const LocationConfig &location) const
 {
-     std::string root = location.getRoot();
+    std::string root = location.getRoot();
 
     if (root.empty())
         return "";
@@ -671,12 +639,11 @@ std::string Server::buildCgiScriptPath(const std::string &path, const LocationCo
 
     if (root[root.length() - 1] != '/' && path[0] != '/')
     {
-        return root +"/" +path;
+        return root + "/" + path;
     }
 
     return root + path;
 }
-
 
 std::string Server::buildCgiResponse(const std::string &output) const
 {
@@ -690,7 +657,7 @@ std::string Server::buildCgiResponse(const std::string &output) const
         separatorLength = 2;
     }
 
-    //CGI returned no headers.
+    // CGI returned no headers.
     if (pos == std::string::npos)
     {
         std::string response;
@@ -720,8 +687,7 @@ std::string Server::buildCgiResponse(const std::string &output) const
 
     response += headers;
 
-    
-    //Add Content-Length
+    // Add Content-Length
     response += "\r\nContent-Length: " + toString(body.size());
 
     response += "\r\nConnection: close\r\n";
@@ -770,12 +736,12 @@ void Server::checkCgiTimeouts()
 
         if (clientIt != _clients.end())
         {
-           RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
+            RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
 
             HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
 
             clientIt->second.setWriteBuffer(error.getResponse());
-            
+
             for (std::size_t j = 0; j < _pollFds.size(); ++j)
             {
                 if (_pollFds[j].fd == clientFd)
@@ -806,7 +772,7 @@ void Server::run()
                       << std::endl;
             int listenFd = setupListenSocket(listens[j]);
             if (listenFd == -1)
-                continue ;
+                continue;
             else
                 _listenServerMap[listenFd] = i;
         }
@@ -814,21 +780,21 @@ void Server::run()
     if (_listenFds.empty())
     {
         std::cerr << "listen socket failed" << std::endl;
-        return ;
+        return;
     }
     while (g_running)
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-            checkCgiTimeouts();
-            checkCgiChildren();
+        checkCgiTimeouts();
+        checkCgiChildren();
         int readyCount = poll(&_pollFds[0], _pollFds.size(), 100);
         if (readyCount == -1)
         {
             if (!g_running)
-                break ;
+                break;
             std::cerr << "poll failed" << std::endl;
-            return ;
+            return;
         }
 
         checkCgiTimeouts();
@@ -836,13 +802,13 @@ void Server::run()
         if (readyCount == 0)
             continue;
 
-        for (std::size_t i = 0; i < _pollFds.size(); )
+        for (std::size_t i = 0; i < _pollFds.size();)
         {
             if (_pollFds[i].revents == 0)
             {
                 ++i;
-                continue ;
-            }    
+                continue;
+            }
             int fd = _pollFds[i].fd;
             // CGI： check whether it is CGI pipe or client socket
             if (_cgiFds.find(fd) != _cgiFds.end())
@@ -851,7 +817,7 @@ void Server::run()
                 {
                     handleCgiWrite(fd, i);
                     continue;
-                } 
+                }
                 if (_pollFds[i].revents & POLLIN)
                 {
                     handleCgiRead(fd, i);
@@ -878,22 +844,19 @@ void Server::run()
                 ++i;
                 continue;
             }
-            //Listen Socket
-            if (isListenFd(fd)
-                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            // Listen Socket
+            if (isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
                 std::cerr << "listen socket error" << std::endl;
-                return ;
+                return;
             }
-            if (!isListenFd(fd)
-                && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            if (!isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
                 std::cerr << "client connection closed or invalid" << std::endl;
                 removeClient(fd, i);
-                continue ;
+                continue;
             }
-            if (isListenFd(fd)
-                && (_pollFds[i].revents & POLLIN))
+            if (isListenFd(fd) && (_pollFds[i].revents & POLLIN))
             {
                 acceptClient(fd);
                 ++i;

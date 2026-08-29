@@ -758,15 +758,18 @@ void Server::checkCgiTimeouts()
 
         cgi->killChild();
 
+        finishCgi(cgi);
+
         std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
 
         if (clientIt != _clients.end())
         {
-            HttpResponse response;
+           RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
 
+            HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
 
-            clientIt->second.setWriteBuffer(response.getResponse());
-
+            clientIt->second.setWriteBuffer(error.getResponse());
+            
             for (std::size_t j = 0; j < _pollFds.size(); ++j)
             {
                 if (_pollFds[j].fd == clientFd)

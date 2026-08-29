@@ -35,9 +35,11 @@ CgiHandler::~CgiHandler()
         close(_stdoutFd);
     if (_pid > 0)
     {
+        kill(_pid, SIGKILL);
         int status;
 
-        waitpid(_pid, &status, WNOHANG);
+        waitpid(_pid, &status, 0);
+        _pid = -1;
     }
 }
 
@@ -340,14 +342,18 @@ void CgiHandler::killChild()
 
     int status;
 
-    waitpid(_pid, &status, 0);
+    pid_t result = waitpid(_pid, &status, 0);
 
-    _exitStatus = status;
-    _childFinished = true;
-    _pid = -1;
+    if (result == _pid)
+    {
+        _exitStatus = status;
+        _childFinished = true;
+        _pid = -1;
 
-    closeInput();
-    closeOutput();
+    }
+
+    // closeInput();
+    // closeOutput();
 }
 
 bool CgiHandler::isChildSuccess() const

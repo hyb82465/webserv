@@ -356,7 +356,7 @@ void Server::handleWrite(int fd, std::size_t &i)
         response.size() - it->second.getBytesSent(),
         0
     );
-    if (bytesSent == -1)
+    if (bytesSent <= 0)
     {
         std::cerr << "send failed" << std::endl;
         removeClient(fd, i);
@@ -690,9 +690,7 @@ std::string Server::buildCgiResponse(const std::string &output) const
         separatorLength = 2;
     }
 
-    /*
-     * CGI returned no headers.
-     */
+    //CGI returned no headers.
     if (pos == std::string::npos)
     {
         std::string response;
@@ -722,9 +720,8 @@ std::string Server::buildCgiResponse(const std::string &output) const
 
     response += headers;
 
-    /*
-     * Add Content-Length.
-     */
+    
+    //Add Content-Length
     response += "\r\nContent-Length: " + toString(body.size());
 
     response += "\r\nConnection: close\r\n";
@@ -767,15 +764,18 @@ void Server::checkCgiTimeouts()
 
         cgi->killChild();
 
+        finishCgi(cgi);
+
         std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
 
         if (clientIt != _clients.end())
         {
-            HttpResponse response;
+           RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
 
+            HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
 
-            clientIt->second.setWriteBuffer(response.getResponse());
-
+            clientIt->second.setWriteBuffer(error.getResponse());
+            
             for (std::size_t j = 0; j < _pollFds.size(); ++j)
             {
                 if (_pollFds[j].fd == clientFd)
@@ -820,7 +820,9 @@ void Server::run()
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        int readyCount = poll(&_pollFds[0], _pollFds.size(), 1000);
+            checkCgiTimeouts();
+            checkCgiChildren();
+        int readyCount = poll(&_pollFds[0], _pollFds.size(), 100);
         if (readyCount == -1)
         {
             if (!g_running)

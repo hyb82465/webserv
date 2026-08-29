@@ -1,14 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
-import sys
 import os
-
-body = sys.stdin.read()
 
 print("Content-Type: text/plain")
 print()
 
-print("Method:", os.environ.get("REQUEST_METHOD"))
-print("Content-Type:", os.environ.get("CONTENT_TYPE"))
-print("Content-Length:", os.environ.get("CONTENT_LENGTH"))
-print("Body:", body)
+print("REQUEST_METHOD=" + os.environ.get("REQUEST_METHOD", ""))
+print("QUERY_STRING=" + os.environ.get("QUERY_STRING", ""))

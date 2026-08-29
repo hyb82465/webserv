@@ -350,7 +350,7 @@ void Server::handleWrite(int fd, std::size_t &i)
         response.size() - it->second.getBytesSent(),
         0
     );
-    if (bytesSent == -1)
+    if (bytesSent <= 0)
     {
         std::cerr << "send failed" << std::endl;
         removeClient(fd, i);
@@ -814,7 +814,9 @@ void Server::run()
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        int readyCount = poll(&_pollFds[0], _pollFds.size(), 1000);
+            checkCgiTimeouts();
+            checkCgiChildren();
+        int readyCount = poll(&_pollFds[0], _pollFds.size(), 100);
         if (readyCount == -1)
         {
             if (!g_running)

@@ -17,43 +17,43 @@ private:
     std::map<int, Client> _clients;
     std::vector<struct pollfd> _pollFds;
 
-    std::map<int, CgiHandler *> _cgiFds;
-    std::vector<CgiHandler *> _cgiHandlers;
+    std::map<int, CgiHandler*> _cgiFds;
+    std::vector<CgiHandler*> _cgiHandlers;
 
     std::vector<ServerConfig> _configs;
 
     Server();
-    Server(const Server &other);
-    Server &operator=(const Server &other);
+    Server(const Server& other);
+    Server& operator=(const Server& other);
 
     bool isListenFd(int fd) const;
     bool setNonBlocking(int fd);
-    int setupListenSocket(const ListenConfig &listenConfig);
+    int setupListenSocket(const ListenConfig& listenConfig);
     void removeClient(int fd, std::size_t i);
-    void processRequest(int fd, std::size_t &i);
+    void processRequest(int fd, std::size_t& i);
     void acceptClient(int listenFd);
-    void handleRead(int fd, std::size_t &i);
-    void handleWrite(int fd, std::size_t &i);
+    void handleRead(int fd, std::size_t& i);
+    void handleWrite(int fd, std::size_t& i);
 
-    void startCgi(int clientFd, const HttpRequest &request,
-                  const LocationConfig &location, const std::string &executable);
-    void handleCgiWrite(int fd, std::size_t &i);
-    void handleCgiRead(int fd, std::size_t &i);
-    CgiHandler *getCgiByFd(int fd);
-    void addCgi(CgiHandler *cgi);
-    void removeCgi(CgiHandler *cgi);
-    void finishCgi(CgiHandler *cgi);
+    void startCgi(int clientFd, const HttpRequest& request,
+        const std::string& scriptPath, const std::string& executable);
+    void handleCgiWrite(int fd, std::size_t& i);
+    void handleCgiRead(int fd, std::size_t& i);
+    CgiHandler* getCgiByFd(int fd);
+    void addCgi(CgiHandler* cgi);
+    void removeCgi(CgiHandler* cgi);
+    void finishCgi(CgiHandler* cgi);
     void removePollFd(int fd);
-    void addCgiPollFds(CgiHandler *cgi);
+    void addCgiPollFds(CgiHandler* cgi);
     void checkCgiChildren();
 
-    std::string findCgiExecutable(const std::string &path, const LocationConfig &location) const;
-    std::string buildCgiScriptPath(const std::string &path, const LocationConfig &location) const;
-    std::string buildCgiResponse(const std::string &output, bool keepAlive) const;
+    std::string findCgiExecutable(const std::string& path, const LocationConfig& location) const;
+    std::string buildCgiResponse(const std::string& output, bool keepAlive) const;
+
     void checkCgiTimeouts();
 
 public:
-    Server(const std::vector<ServerConfig> &_configs);
+    Server(const std::vector<ServerConfig>& _configs);
     ~Server();
 
     void run();

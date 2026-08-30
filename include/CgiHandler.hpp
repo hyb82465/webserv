@@ -9,17 +9,15 @@
 #include <sys/types.h>
 #include <ctime>
 
-
 class CgiHandler
 {
 private:
     int _clientFd;
-    
+
     pid_t _pid;
 
     int _stdinFd;
     int _stdoutFd;
-
 
     bool _stdinOpen;
     bool _stdoutOpen;
@@ -28,7 +26,7 @@ private:
     std::string _scriptPath;
 
     std::string _requestBody;
-    std::size_t _bodyOffset;// how many bytes wroten in CGI
+    std::size_t _bodyOffset; // how many bytes wroten in CGI
 
     std::string _output;
 
@@ -50,6 +48,7 @@ private:
     std::string getDirectory(const std::string &path) const;
 
     std::string getFileName(const std::string &path) const;
+
 public:
     CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath);
     ~CgiHandler();
@@ -75,12 +74,11 @@ public:
 
     bool waitForChild();
     bool isChildSuccess() const;
-    
+
     bool hasTimedOut(int timeoutSeconds) const;
     void killChild();
-    
+
     const std::string &getOutput() const;
 };
-
 
 #endif

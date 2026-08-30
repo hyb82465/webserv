@@ -14,7 +14,7 @@
 ConfigParser::ConfigParser() {}
 ConfigParser::~ConfigParser() {}
 
-ListenConfig ConfigParser::parseListenValue(const std::string &value)
+ListenConfig ConfigParser::parseListenValue(const std::string& value)
 {
     ListenConfig listen;
 
@@ -22,53 +22,53 @@ ListenConfig ConfigParser::parseListenValue(const std::string &value)
 
     if (colon == std::string::npos)
     {
-		// printf("debug 1\n");
-            throw std::runtime_error("Invalid listen address");
+        // printf("debug 1\n");
+        throw std::runtime_error("Invalid listen address");
     }
 
     std::string host = value.substr(0, colon);
     std::string portStr = value.substr(colon + 1);
     if (host.empty())
         throw std::runtime_error("Missing interface in listen");
-    
-    char *endPtr;
+
+    char* endPtr;
     long portValue = std::strtol(portStr.c_str(), &endPtr, 10);
-    if (*endPtr != '\0' )
-            throw std::runtime_error("Invalid Value: " + portStr);
+    if (*endPtr != '\0')
+        throw std::runtime_error("Invalid Value: " + portStr);
     if (portValue < 1 || portValue > 65535)
-            throw std::out_of_range("Port Value out of range");
-    
+        throw std::out_of_range("Port Value out of range");
+
     listen.setHost(host);
-    listen.setPort (static_cast<int>(portValue));
+    listen.setPort(static_cast<int>(portValue));
     return listen;
 }
-void ConfigParser::parseListen(TokenStream &tokens, ServerConfig &config)
+void ConfigParser::parseListen(TokenStream& tokens, ServerConfig& config)
 {
     std::string port = tokens.consume();
 
     tokens.expect(";");
-		// printf("debug 1\n");
+    // printf("debug 1\n");
 
     ListenConfig listen = parseListenValue(port);
     config.addListen(listen);
 }
 
-void ConfigParser::parseRoot(TokenStream &tokens, ServerConfig &config)
+void ConfigParser::parseRoot(TokenStream& tokens, ServerConfig& config)
 {
     config.setRoot(tokens.consume());
     tokens.expect(";");
 }
 
-void ConfigParser::parseIndex(TokenStream &tokens, ServerConfig &config)
+void ConfigParser::parseIndex(TokenStream& tokens, ServerConfig& config)
 {
     config.setIndex(tokens.consume());
     tokens.expect(";");
 }
-void ConfigParser::parseClientMaxBodySize(TokenStream &tokens, ServerConfig &config)
+void ConfigParser::parseClientMaxBodySize(TokenStream& tokens, ServerConfig& config)
 {
     std::string size = tokens.consume();
     tokens.expect(";");
-    char *endPtr;
+    char* endPtr;
     long sizeValue = std::strtol(size.c_str(), &endPtr, 10);
     if (*endPtr != '\0')
         throw std::runtime_error("Invalid Value: " + size);
@@ -76,13 +76,13 @@ void ConfigParser::parseClientMaxBodySize(TokenStream &tokens, ServerConfig &con
         throw std::out_of_range("Client Max Body Size Value cannot be negative.");
     config.setClientMaxBodySize(static_cast<size_t>(sizeValue));
 }
-void ConfigParser::parseErrorPage(TokenStream &tokens, ServerConfig &config)
+void ConfigParser::parseErrorPage(TokenStream& tokens, ServerConfig& config)
 {
     std::string num = tokens.consume();
     std::string path = tokens.consume();
     tokens.expect(";");
 
-    char *endPtr;
+    char* endPtr;
 
     long numValue = std::strtol(num.c_str(), &endPtr, 10);
     if (*endPtr != '\0')
@@ -92,7 +92,7 @@ void ConfigParser::parseErrorPage(TokenStream &tokens, ServerConfig &config)
     config.addErrorPage(static_cast<int>(numValue), path);
 }
 
-ServerConfig ConfigParser::parseServer(TokenStream &tokens)
+ServerConfig ConfigParser::parseServer(TokenStream& tokens)
 {
     ServerConfig config;
 
@@ -106,9 +106,9 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
         {
             // printf("debug1\n"); 
             parseListen(tokens, config);
-           // printf("debug 1\n");
+            // printf("debug 1\n");
         }
-        
+
         else if (tokens.match("root"))
         {
             // printf("debug2\n"); 
@@ -131,7 +131,7 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
             // printf("debug5\n");
         }
         else if (tokens.peek() == "location")
-        { 
+        {
 
             config.addLocation(parseLocation(tokens));
         }
@@ -143,16 +143,16 @@ ServerConfig ConfigParser::parseServer(TokenStream &tokens)
     config.applyDefaultsToLocations();
     return config;
 }
-void ConfigParser::parseLocationRoot(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseLocationRoot(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume(); 
+    tokens.consume();
     location.setRoot(tokens.peek());
     tokens.consume();
     tokens.expect(";");
     // printf("debug6\n");
 
 }
-void ConfigParser::parseMethods(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseMethods(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
     while (tokens.hasNext() && tokens.peek() != ";")
@@ -166,7 +166,7 @@ void ConfigParser::parseMethods(TokenStream &tokens, LocationConfig &location)
     }
     tokens.expect(";");
 }
-void ConfigParser::parseAutoindex(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseAutoindex(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
     std::string autoindexValue = tokens.consume();
@@ -180,23 +180,23 @@ void ConfigParser::parseAutoindex(TokenStream &tokens, LocationConfig &location)
         throw std::runtime_error("Invalid autoindex value: " + autoindexValue);
     }
 }
-void ConfigParser::parseUploadStore(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseUploadStore(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
     location.setUploadStore(tokens.consume());
     tokens.expect(";");
 }
 
-void ConfigParser::parseRedirect(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseRedirect(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
 
-    char *endPtr;
+    char* endPtr;
     std::string strcode = tokens.consume();
     std::string url = tokens.consume();
     long statusValue = std::strtol(strcode.c_str(), &endPtr, 10);
     if (*endPtr != '\0')
-        throw std::runtime_error("Invalid redirect status: " +strcode);
+        throw std::runtime_error("Invalid redirect status: " + strcode);
     if (statusValue != 301
         && statusValue != 302
         && statusValue != 303
@@ -208,18 +208,18 @@ void ConfigParser::parseRedirect(TokenStream &tokens, LocationConfig &location)
 
     location.setRedirectCode(static_cast<int>(statusValue));
     location.setRedirectUrl(url);
-    
+
     tokens.expect(";");
 }
 
-void ConfigParser::parseLocationIndex(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseLocationIndex(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
     location.setIndex(tokens.consume());
     tokens.expect(";");
 }
 
-void ConfigParser::parseCgi(TokenStream &tokens, LocationConfig &location)
+void ConfigParser::parseCgi(TokenStream& tokens, LocationConfig& location)
 {
     tokens.consume();
     std::string extension = tokens.consume();
@@ -231,10 +231,10 @@ void ConfigParser::parseCgi(TokenStream &tokens, LocationConfig &location)
         throw std::runtime_error("CGI executable cannot be empty");
     if (extension[0] != '.')
         throw std::runtime_error("CGI extension must start with '.':" + extension);
-    
+
     location.addCgi(extension, executable);
 }
-LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
+LocationConfig ConfigParser::parseLocation(TokenStream& tokens)
 {
     LocationConfig location;
 
@@ -272,7 +272,7 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
         }
         else if (token == "return")
         {
-            		
+
             parseRedirect(tokens, location);
         }
         else if (token == "cgi")
@@ -285,13 +285,13 @@ LocationConfig ConfigParser::parseLocation(TokenStream &tokens)
     tokens.expect("}");
     return location;
 }
-std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
+std::vector<ServerConfig> ConfigParser::parse(const std::string& filename)
 {
     std::ifstream file(filename.c_str());
 
     if (!file.is_open())
         throw std::runtime_error("Failed to open configuration file: " + filename);
-    
+
     std::stringstream buffer;
     buffer << file.rdbuf();
     std::string fileContent = buffer.str();
@@ -299,24 +299,22 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string &filename)
 
     Tokenizer tokenizer;
     std::vector<std::string> tokens = tokenizer.tokenize(fileContent);
-    
+
     // print tokens for debugging
     // std::cout << "Tokens: " << std::endl;
     // for (size_t i = 0; i < tokens.size(); ++i)
     // {
     //     std::cout << tokens[i] << std::endl;
     // }
-		// printf("debug 1\n");
+        // printf("debug 1\n");
 
     std::vector<ServerConfig> servers;
     TokenStream tokenStream(tokens);
-		// printf("debug 2\n");
+    // printf("debug 2\n");
 
     while (tokenStream.hasNext())
     {
         servers.push_back(parseServer(tokenStream));
-    }   
+    }
     return servers;
 }
-
-

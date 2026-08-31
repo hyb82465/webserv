@@ -14,7 +14,7 @@
 #include <cstring>
 #include <cstddef>
 #include <fcntl.h>
-#include <cerrno>
+// #include <cerrno>
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
@@ -393,7 +393,35 @@ void Server::handleWrite(int fd, std::size_t &i)
 void Server::startCgi(int clientFd, const HttpRequest &request,
                       const std::string &scriptPath, const std::string &executable)
 {
-    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
+    std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
+
+    if (clientIt == _clients.end())
+    {
+        std::cerr << "CGI: client not found" << std::endl;
+        return;
+    }
+
+    std::size_t serverIndex = clientIt->second.getServerIndex();
+
+    if (serverIndex >= _configs.size())
+    {
+        std::cerr << "CGI: invalid server index" << std::endl;
+        return;
+    }
+
+    const ServerConfig &serverConfig = _configs[serverIndex];
+
+    const std::vector<ListenConfig> &listens = serverConfig.getListens();
+
+    if (listens.empty())
+    {
+        std::cerr << "CGI: server has no listen config" << std::endl;
+        return;
+    }
+
+    int serverPort = listens[0].getPort();
+
+    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort);
     try
     {
         std::cout << "[CGI DEBUG]"

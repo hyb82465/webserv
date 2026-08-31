@@ -275,21 +275,36 @@ void Server::acceptClient(int listenFd)
         return;
     }
 
+    std::map<int, std::size_t>::const_iterator serverIt = _listenServerMap.find(listenFd);
+    if (serverIt == _listenServerMap.end())
+    {
+        std::cerr << "listen fd has no server config" << std::endl;
+        close(clientFd);
+        return;
+    }
+    std::map<int, int>::const_iterator portIt = _listenPortMap.find(listenFd);
+    if (portIt == _listenPortMap.end())
+    {
+        std::cerr << "listen fd has no port" << std::endl;
+        close(clientFd);
+        return;
+    }
+    std::size_t serverIndex = serverIt->second;
+    int serverPort = portIt->second;
+
     struct pollfd clientPollFd;
     clientPollFd.fd = clientFd;
     clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
 
     _pollFds.push_back(clientPollFd);
-    std::map<int, std::size_t>::const_iterator it = _listenServerMap.find(listenFd);
-    if (it == _listenServerMap.end())
-    {
-        std::cerr << "listen fd has no server config" << std::endl;
-        return;
-    }
-    std::size_t serverIndex = it->second;
-    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex)));
-    std::cout << "client connected, fd = " << clientFd << std::endl;
+
+    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort)));
+    std::cout << "client connected, fd = "
+              << clientFd
+              << ", port = "
+              << serverPort
+              << std::endl;
 }
 
 void Server::handleRead(int fd, std::size_t &i)
@@ -394,33 +409,9 @@ void Server::startCgi(int clientFd, const HttpRequest &request,
                       const std::string &scriptPath, const std::string &executable)
 {
     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
-
     if (clientIt == _clients.end())
-    {
-        std::cerr << "CGI: client not found" << std::endl;
-        return;
-    }
-
-    std::size_t serverIndex = clientIt->second.getServerIndex();
-
-    if (serverIndex >= _configs.size())
-    {
-        std::cerr << "CGI: invalid server index" << std::endl;
-        return;
-    }
-
-    const ServerConfig &serverConfig = _configs[serverIndex];
-
-    const std::vector<ListenConfig> &listens = serverConfig.getListens();
-
-    if (listens.empty())
-    {
-        std::cerr << "CGI: server has no listen config" << std::endl;
-        return;
-    }
-
-    int serverPort = listens[0].getPort();
-
+        throw std::runtime_error("CGI: client not found");
+    int serverPort = clientIt->second.getServerPort();
     CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort);
     try
     {
@@ -435,7 +426,6 @@ void Server::startCgi(int clientFd, const HttpRequest &request,
         delete cgi;
         throw;
     }
-
     addCgi(cgi);
     addCgiPollFds(cgi);
 }
@@ -753,7 +743,10 @@ void Server::run()
             if (listenFd == -1)
                 continue;
             else
+            {
                 _listenServerMap[listenFd] = i;
+                _listenPortMap[listenFd] = listens[j].getPort();
+            }
         }
     }
     if (_listenFds.empty())

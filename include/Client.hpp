@@ -1,9 +1,9 @@
 #ifndef CLIENT_HPP
-# define CLIENT_HPP
+#define CLIENT_HPP
 
-# include "RequestState.hpp"
-# include <string>
-# include <cstddef>
+#include "RequestState.hpp"
+#include <string>
+#include <cstddef>
 
 class Client
 {
@@ -15,10 +15,12 @@ private:
     std::string _writeBuffer;
     std::size_t _bytesSent;
     std::size_t _serverIndex;
+    int _serverPort;
 
     RequestState _requestState;
+
 public:
-    Client(int fd, std::size_t serverIndex);
+    Client(int fd, std::size_t serverIndex, int serverPort);
     Client(const Client &other);
     Client &operator=(const Client &other);
     ~Client();
@@ -28,6 +30,7 @@ public:
     const std::string &getWriteBuffer() const;
     std::size_t getBytesSent() const;
     std::size_t getServerIndex() const;
+    int getServerPort() const;
 
     RequestState &getRequestState();
     const RequestState &getRequestState() const;

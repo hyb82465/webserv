@@ -1,8 +1,9 @@
 #include "Client.hpp"
 
-Client::Client(int fd, std::size_t serverIndex)
-    : _fd(fd), _readBuffer(""), _writeBuffer(""), _bytesSent(0), _serverIndex(serverIndex)
-{}
+Client::Client(int fd, std::size_t serverIndex, int serverPort)
+    : _fd(fd), _readBuffer(""), _writeBuffer(""), _bytesSent(0), _serverIndex(serverIndex), _serverPort(serverPort)
+{
+}
 
 Client::Client(const Client &other)
     : _fd(other._fd),
@@ -10,8 +11,10 @@ Client::Client(const Client &other)
       _writeBuffer(other._writeBuffer),
       _bytesSent(other._bytesSent),
       _serverIndex(other._serverIndex),
+      _serverPort(other._serverPort),
       _requestState(other._requestState)
-{}
+{
+}
 
 Client &Client::operator=(const Client &other)
 {
@@ -22,13 +25,15 @@ Client &Client::operator=(const Client &other)
         _writeBuffer = other._writeBuffer;
         _bytesSent = other._bytesSent;
         _serverIndex = other._serverIndex;
+        _serverPort = other._serverPort;
         _requestState = other._requestState;
     }
     return *this;
 }
 
 Client::~Client()
-{}
+{
+}
 
 int Client::getFd() const
 {
@@ -53,6 +58,11 @@ std::size_t Client::getBytesSent() const
 std::size_t Client::getServerIndex() const
 {
     return _serverIndex;
+}
+
+int Client::getServerPort() const
+{
+    return _serverPort;
 }
 
 RequestState &Client::getRequestState()

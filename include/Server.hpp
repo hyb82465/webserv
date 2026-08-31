@@ -14,6 +14,7 @@ class Server
 private:
     std::vector<int> _listenFds;
     std::map<int, std::size_t> _listenServerMap;
+    std::map<int, int> _listenPortMap;
     std::map<int, Client> _clients;
     std::vector<struct pollfd> _pollFds;
 

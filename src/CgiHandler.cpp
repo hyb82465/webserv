@@ -11,11 +11,13 @@
 #include <stdexcept>
 #include <signal.h>
 
-CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath)
+CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath,
+                int serverPort)
         :_clientFd(clientFd), _pid(-1), 
          _stdinFd(-1),_stdoutFd(-1),
          _stdinOpen(false), _stdoutOpen(false),
          _executable(executable), _scriptPath(scriptPath),
+          _serverPort(serverPort),
          _requestBody(""),
          _bodyOffset(0),
          _output(""),
@@ -252,8 +254,11 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("SCRIPT_FILENAME=" + _scriptPath);
 
     _environment.push_back("SERVER_NAME=localhost");
-    _environment.push_back("SERVER_PORT=8080");
-    _environment.push_back("REMOTE_ADDR=127.0.0.1");
+
+    std::ostringstream port;
+    port << _serverPort;
+    _environment.push_back("SERVER_PORT=" + port.str());
+    _environment.push_back("REMOTE_ADDR=127.0.0.1" );
     _environment.push_back("PATH_INFO=");
     _environment.push_back("REDIRECT_STATUS=200");
 }

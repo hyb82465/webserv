@@ -19,7 +19,7 @@
 #include <stdexcept>
 #include <sstream>
 
-Server::Server(const std::vector<ServerConfig>& configs)
+Server::Server(const std::vector<ServerConfig> &configs)
     : _configs(configs)
 {
     if (_configs.empty())
@@ -28,12 +28,12 @@ Server::Server(const std::vector<ServerConfig>& configs)
 
 Server::~Server()
 {
-    for (std::vector<CgiHandler*>::iterator it =
-        _cgiHandlers.begin();
-        it != _cgiHandlers.end();
-        ++it)
+    for (std::vector<CgiHandler *>::iterator it =
+             _cgiHandlers.begin();
+         it != _cgiHandlers.end();
+         ++it)
     {
-        delete* it;
+        delete *it;
     }
 
     _cgiHandlers.clear();
@@ -66,7 +66,7 @@ bool Server::setNonBlocking(int fd)
     return true;
 }
 
-int Server::setupListenSocket(const ListenConfig& listenConfig)
+int Server::setupListenSocket(const ListenConfig &listenConfig)
 {
     // socket
     // int socket(int domain, int type, int protocol);
@@ -91,7 +91,7 @@ int Server::setupListenSocket(const ListenConfig& listenConfig)
                 socklen_t addressLength);
     */
     struct addrinfo hints;
-    struct addrinfo* result = NULL;
+    struct addrinfo *result = NULL;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;       // IPv4
     hints.ai_socktype = SOCK_STREAM; // TCP
@@ -134,8 +134,8 @@ int Server::setupListenSocket(const ListenConfig& listenConfig)
     _pollFds.push_back(listenPollFd);
 
     std::cout << "listening on "
-        << host << ":" << port
-        << ", fd = " << fd << std::endl;
+              << host << ":" << port
+              << ", fd = " << fd << std::endl;
 
     return fd;
 }
@@ -147,7 +147,7 @@ void Server::removeClient(int fd, std::size_t i)
     _pollFds.erase(_pollFds.begin() + i);
 }
 
-void Server::processRequest(int fd, std::size_t& i)
+void Server::processRequest(int fd, std::size_t &i)
 {
     std::map<int, Client>::iterator it = _clients.find(fd);
     if (it == _clients.end())
@@ -163,9 +163,9 @@ void Server::processRequest(int fd, std::size_t& i)
         removeClient(fd, i);
         return;
     }
-    const ServerConfig& config = _configs[serverIndex];
-    RequestState& state = it->second.getRequestState();
-    HttpRequest& request = state.request;
+    const ServerConfig &config = _configs[serverIndex];
+    RequestState &state = it->second.getRequestState();
+    HttpRequest &request = state.request;
     RequestParser parser;
     std::size_t maxBodySize = config.getClientMaxBodySize();
     ParseResult result = parser.parse(it->second.getReadBuffer(), state, maxBodySize);
@@ -179,8 +179,8 @@ void Server::processRequest(int fd, std::size_t& i)
     else if (result == PARSE_ERROR)
     {
         std::cout << "parse error, status = "
-            << request.getStatus()
-            << std::endl;
+                  << request.getStatus()
+                  << std::endl;
         state.keepAlive = false;
         RequestHandler handler(config);
         HttpResponse response = handler.handleError(request.getStatus());
@@ -191,7 +191,7 @@ void Server::processRequest(int fd, std::size_t& i)
         return;
     }
     RequestHandler handler(config);
-    const LocationConfig* location = handler.getLocation(request);
+    const LocationConfig *location = handler.getLocation(request);
     if (location != NULL && !location->getCgi().empty())
     {
         std::string executable = findCgiExecutable(request.getPath(), *location);
@@ -212,14 +212,14 @@ void Server::processRequest(int fd, std::size_t& i)
             {
                 startCgi(fd, request, scriptPath, executable);
                 std::cout << "[CGI START]"
-                    << " fd=" << fd
-                    << " method=" << request.getMethod()
-                    << " path=" << request.getPath()
-                    << " body=" << request.getBody().size()
-                    << std::endl;
+                          << " fd=" << fd
+                          << " method=" << request.getMethod()
+                          << " path=" << request.getPath()
+                          << " body=" << request.getBody().size()
+                          << std::endl;
                 _pollFds[i].events = 0;
             }
-            catch (const std::exception& e)
+            catch (const std::exception &e)
             {
                 std::cerr << "CGI failed: " << e.what() << std::endl;
                 state.keepAlive = false;
@@ -252,14 +252,14 @@ void Server::acceptClient(int listenFd)
     /* int accept(int socketFd,
                 struct sockaddr *clientAddress,
                 socklen_t *clientAddressLength); */
-                // struct sockaddr_in clientAddr;
-                // socklen_t clientAddrLen = sizeof(clientAddr);
-                // std::memset(&clientAddr, 0, sizeof(clientAddr));
-                // int clientFd = accept(
-                //     _listenFd,
-                //     reinterpret_cast<struct sockaddr *>(&clientAddr),
-                //     &clientAddrLen
-                // );
+    // struct sockaddr_in clientAddr;
+    // socklen_t clientAddrLen = sizeof(clientAddr);
+    // std::memset(&clientAddr, 0, sizeof(clientAddr));
+    // int clientFd = accept(
+    //     _listenFd,
+    //     reinterpret_cast<struct sockaddr *>(&clientAddr),
+    //     &clientAddrLen
+    // );
     int clientFd = accept(listenFd, NULL, NULL);
     if (clientFd == -1)
     {
@@ -292,7 +292,7 @@ void Server::acceptClient(int listenFd)
     std::cout << "client connected, fd = " << clientFd << std::endl;
 }
 
-void Server::handleRead(int fd, std::size_t& i)
+void Server::handleRead(int fd, std::size_t &i)
 {
     // recv
     /* ssize_t recv(int socketFd,
@@ -324,7 +324,7 @@ void Server::handleRead(int fd, std::size_t& i)
     processRequest(fd, i);
 }
 
-void Server::handleWrite(int fd, std::size_t& i)
+void Server::handleWrite(int fd, std::size_t &i)
 {
     // send
     /* ssize_t send(int socketFd,
@@ -338,20 +338,20 @@ void Server::handleWrite(int fd, std::size_t& i)
         removeClient(fd, i);
         return;
     }
-    const std::string& response = it->second.getWriteBuffer();
+    const std::string &response = it->second.getWriteBuffer();
     if (it->second.getBytesSent() == 0)
     {
-        RequestState& state = it->second.getRequestState();
+        RequestState &state = it->second.getRequestState();
 
         std::string::size_type end = response.find("\r\n");
 
         std::cout << "[RESPONSE]"
-            << " fd=" << fd
-            << " method=" << state.request.getMethod()
-            << " path=" << state.request.getPath()
-            << " status="
-            << response.substr(0, end)
-            << std::endl;
+                  << " fd=" << fd
+                  << " method=" << state.request.getMethod()
+                  << " path=" << state.request.getPath()
+                  << " status="
+                  << response.substr(0, end)
+                  << std::endl;
     }
     ssize_t bytesSent = send(
         fd,
@@ -368,7 +368,7 @@ void Server::handleWrite(int fd, std::size_t& i)
     if (it->second.getBytesSent() >= response.size())
     {
         std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
-        RequestState& state = it->second.getRequestState();
+        RequestState &state = it->second.getRequestState();
         if (!state.keepAlive)
         {
             removeClient(fd, i);
@@ -390,16 +390,16 @@ void Server::handleWrite(int fd, std::size_t& i)
     ++i;
 }
 
-void Server::startCgi(int clientFd, const HttpRequest& request,
-    const std::string& scriptPath, const std::string& executable)
+void Server::startCgi(int clientFd, const HttpRequest &request,
+                      const std::string &scriptPath, const std::string &executable)
 {
-    CgiHandler* cgi = new CgiHandler(clientFd, executable, scriptPath);
+    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath);
     try
     {
         std::cout << "[CGI DEBUG]"
-            << " executable=" << executable
-            << " scriptPath=" << scriptPath
-            << std::endl;
+                  << " executable=" << executable
+                  << " scriptPath=" << scriptPath
+                  << std::endl;
         cgi->start(request);
     }
     catch (...)
@@ -411,9 +411,10 @@ void Server::startCgi(int clientFd, const HttpRequest& request,
     addCgi(cgi);
     addCgiPollFds(cgi);
 }
-void Server::handleCgiWrite(int fd, std::size_t& i)
+
+void Server::handleCgiWrite(int fd, std::size_t &i)
 {
-    CgiHandler* cgi = getCgiByFd(fd);
+    CgiHandler *cgi = getCgiByFd(fd);
 
     if (cgi == NULL)
     {
@@ -437,9 +438,9 @@ void Server::handleCgiWrite(int fd, std::size_t& i)
     ++i;
 }
 
-void Server::handleCgiRead(int fd, std::size_t& i)
+void Server::handleCgiRead(int fd, std::size_t &i)
 {
-    CgiHandler* cgi = getCgiByFd(fd);
+    CgiHandler *cgi = getCgiByFd(fd);
 
     if (cgi == NULL)
     {
@@ -465,9 +466,9 @@ void Server::handleCgiRead(int fd, std::size_t& i)
 
     ++i;
 }
-CgiHandler* Server::getCgiByFd(int fd)
+CgiHandler *Server::getCgiByFd(int fd)
 {
-    std::map<int, CgiHandler*>::iterator it = _cgiFds.find(fd);
+    std::map<int, CgiHandler *>::iterator it = _cgiFds.find(fd);
 
     if (it == _cgiFds.end())
         return NULL;
@@ -475,7 +476,7 @@ CgiHandler* Server::getCgiByFd(int fd)
     return it->second;
 }
 
-void Server::addCgi(CgiHandler* cgi)
+void Server::addCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
@@ -492,7 +493,7 @@ void Server::addCgi(CgiHandler* cgi)
     }
 }
 
-void Server::removeCgi(CgiHandler* cgi)
+void Server::removeCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
@@ -515,12 +516,12 @@ void Server::removeCgi(CgiHandler* cgi)
         removePollFd(stdoutFd);
     }
 
-    for (std::vector<CgiHandler*>::iterator it = _cgiHandlers.begin();
-        it != _cgiHandlers.end(); ++it)
+    for (std::vector<CgiHandler *>::iterator it = _cgiHandlers.begin();
+         it != _cgiHandlers.end(); ++it)
     {
         if (*it == cgi)
         {
-            delete* it;
+            delete *it;
 
             _cgiHandlers.erase(it);
 
@@ -528,7 +529,7 @@ void Server::removeCgi(CgiHandler* cgi)
         }
     }
 }
-void Server::finishCgi(CgiHandler* cgi)
+void Server::finishCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
@@ -540,7 +541,7 @@ void Server::finishCgi(CgiHandler* cgi)
         removeCgi(cgi);
         return;
     }
-    RequestState& state = clientIt->second.getRequestState();
+    RequestState &state = clientIt->second.getRequestState();
     std::string response;
     if (cgi->isChildSuccess())
         response = buildCgiResponse(cgi->getOutput(), state.keepAlive);
@@ -576,7 +577,7 @@ void Server::removePollFd(int fd)
     }
 }
 
-void Server::addCgiPollFds(CgiHandler* cgi)
+void Server::addCgiPollFds(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
@@ -611,9 +612,9 @@ void Server::addCgiPollFds(CgiHandler* cgi)
 void Server::checkCgiChildren()
 {
     for (std::size_t i = 0;
-        i < _cgiHandlers.size();)
+         i < _cgiHandlers.size();)
     {
-        CgiHandler* cgi = _cgiHandlers[i];
+        CgiHandler *cgi = _cgiHandlers[i];
 
         if (!cgi->isStdoutOpen())
         {
@@ -629,7 +630,7 @@ void Server::checkCgiChildren()
     }
 }
 
-std::string Server::findCgiExecutable(const std::string& path, const LocationConfig& location) const
+std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const
 {
     std::string::size_type pos = path.find_last_of('.');
 
@@ -638,7 +639,7 @@ std::string Server::findCgiExecutable(const std::string& path, const LocationCon
 
     std::string extension = path.substr(pos);
 
-    const std::map<std::string, std::string>& cgi = location.getCgi();
+    const std::map<std::string, std::string> &cgi = location.getCgi();
 
     std::map<std::string, std::string>::const_iterator it = cgi.find(extension);
 
@@ -648,7 +649,7 @@ std::string Server::findCgiExecutable(const std::string& path, const LocationCon
     return it->second;
 }
 
-std::string Server::buildCgiResponse(const std::string& output, bool keepAlive) const
+std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) const
 {
     std::string::size_type pos = output.find("\r\n\r\n");
     std::size_t separatorLength = 4;
@@ -663,9 +664,7 @@ std::string Server::buildCgiResponse(const std::string& output, bool keepAlive) 
         std::string response;
         response += "HTTP/1.1 200 OK\r\n";
         response += "Content-Type: text/html\r\n";
-        response += "Content-Length: "
-            + Utils::sizetToString(output.size())
-            + "\r\n";
+        response += "Content-Length: " + Utils::sizetToString(output.size()) + "\r\n";
         if (keepAlive)
             response += "Connection: keep-alive\r\n";
         else
@@ -680,9 +679,7 @@ std::string Server::buildCgiResponse(const std::string& output, bool keepAlive) 
     response += "HTTP/1.1 200 OK\r\n";
     response += headers;
     // Add Content-Length
-    response += "\r\nContent-Length: "
-        + Utils::sizetToString(body.size())
-        + "\r\n";
+    response += "\r\nContent-Length: " + Utils::sizetToString(body.size()) + "\r\n";
     if (keepAlive)
         response += "Connection: keep-alive\r\n";
     else
@@ -698,7 +695,7 @@ void Server::checkCgiTimeouts()
     std::size_t i = 0;
     while (i < _cgiHandlers.size())
     {
-        CgiHandler* cgi = _cgiHandlers[i];
+        CgiHandler *cgi = _cgiHandlers[i];
         if (!cgi->hasTimedOut(CGI_TIMEOUT))
         {
             ++i;
@@ -714,16 +711,16 @@ void Server::run()
 {
     for (std::size_t i = 0; i < _configs.size(); ++i)
     {
-        const std::vector<ListenConfig>& listens =
+        const std::vector<ListenConfig> &listens =
             _configs[i].getListens();
         for (std::size_t j = 0; j < listens.size(); ++j)
         {
             std::cout << "server " << i
-                << " host="
-                << listens[j].getHost()
-                << " port="
-                << listens[j].getPort()
-                << std::endl;
+                      << " host="
+                      << listens[j].getHost()
+                      << " port="
+                      << listens[j].getPort()
+                      << std::endl;
             int listenFd = setupListenSocket(listens[j]);
             if (listenFd == -1)
                 continue;
@@ -779,7 +776,7 @@ void Server::run()
                 }
                 if (_pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
                 {
-                    CgiHandler* cgi = getCgiByFd(fd);
+                    CgiHandler *cgi = getCgiByFd(fd);
                     if (cgi != NULL && cgi->getStdoutFd() == fd)
                     {
                         cgi->readOutput();

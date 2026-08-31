@@ -192,6 +192,22 @@ void Server::processRequest(int fd, std::size_t &i)
     }
     RequestHandler handler(config);
     const LocationConfig *location = handler.getLocation(request);
+    HttpResponse response;
+    if (request.getMethod() != "GET" && request.getMethod() != "POST" && request.getMethod() != "DELETE")
+    {
+        state.keepAlive = false;
+    }
+    if (handler.preCheck(request, location, response))
+    {
+        if (state.keepAlive)
+            response.setHeader("Connection", "keep-alive");
+        else
+            response.setHeader("Connection", "close");
+        it->second.setWriteBuffer(response.getResponse());
+        _pollFds[i].events = POLLOUT;
+        ++i;
+        return;
+    }
     if (location != NULL && !location->getCgi().empty())
     {
         std::string executable = findCgiExecutable(request.getPath(), *location);
@@ -201,7 +217,7 @@ void Server::processRequest(int fd, std::size_t &i)
             if (scriptPath.empty())
             {
                 state.keepAlive = false;
-                HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+                response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
                 response.setHeader("Connection", "close");
                 it->second.setWriteBuffer(response.getResponse());
                 _pollFds[i].events = POLLOUT;
@@ -223,7 +239,7 @@ void Server::processRequest(int fd, std::size_t &i)
             {
                 std::cerr << "CGI failed: " << e.what() << std::endl;
                 state.keepAlive = false;
-                HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+                response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
                 response.setHeader("Connection", "close");
                 it->second.setWriteBuffer(response.getResponse());
                 _pollFds[i].events = POLLOUT;
@@ -232,11 +248,7 @@ void Server::processRequest(int fd, std::size_t &i)
             return;
         }
     }
-    HttpResponse response = handler.handle(request);
-    if (request.getMethod() != "GET" && request.getMethod() != "POST" && request.getMethod() != "DELETE")
-    {
-        state.keepAlive = false;
-    }
+    response = handler.handleResolved(request);
     if (state.keepAlive)
         response.setHeader("Connection", "keep-alive");
     else

@@ -9,7 +9,7 @@
 #include <dirent.h>
 #include <iostream>
 
-RequestHandler::RequestHandler(const ServerConfig& config) : _server(config)
+RequestHandler::RequestHandler(const ServerConfig &config) : _server(config)
 {
 }
 
@@ -19,10 +19,10 @@ RequestHandler::~RequestHandler()
 
 HttpResponse RequestHandler::errorResponse(
     HttpStatus status,
-    const std::string& defaultBody)
+    const std::string &defaultBody)
 {
     HttpResponse response;
-    const std::map<int, std::string>& errorPages =
+    const std::map<int, std::string> &errorPages =
         _server.getErrorPages();
     std::map<int, std::string>::const_iterator it =
         errorPages.find(static_cast<int>(status));
@@ -52,8 +52,8 @@ HttpResponse RequestHandler::errorResponse(
 }
 
 HttpResponse RequestHandler::autoindexResponse(
-    const std::string& path,
-    const std::string& requestPath)
+    const std::string &path,
+    const std::string &requestPath)
 {
     HttpResponse response;
     response.setStatus(HTTP_OK);
@@ -121,7 +121,7 @@ HttpResponse RequestHandler::versionNotSupported()
 
 HttpResponse RequestHandler::redirect(
     HttpStatus status,
-    const std::string& url)
+    const std::string &url)
 {
     HttpResponse response;
     response.setStatus(status);
@@ -130,7 +130,7 @@ HttpResponse RequestHandler::redirect(
     return response;
 }
 
-std::string RequestHandler::getMimeType(const std::string& path)
+std::string RequestHandler::getMimeType(const std::string &path)
 {
     std::size_t lastDot = path.rfind('.');
     if (lastDot == std::string::npos)
@@ -157,7 +157,7 @@ std::string RequestHandler::getMimeType(const std::string& path)
     return "application/octet-stream";
 }
 
-std::string RequestHandler::getBoundary(const HttpRequest& request)
+std::string RequestHandler::getBoundary(const HttpRequest &request)
 {
     std::string contentType = request.getHeader("content-type");
     std::string key = "boundary=";
@@ -167,7 +167,7 @@ std::string RequestHandler::getBoundary(const HttpRequest& request)
     return contentType.substr(pos + key.size());
 }
 
-std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string& body, const std::string& boundary)
+std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body, const std::string &boundary)
 {
     std::vector<MultipartPart> parts;
     std::string delimiter = "--" + boundary;
@@ -259,7 +259,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string& bod
     return parts;
 }
 
-bool RequestHandler::writeFile(const std::string& path, const std::string& data)
+bool RequestHandler::writeFile(const std::string &path, const std::string &data)
 {
     std::ofstream file(
         path.c_str(),
@@ -272,12 +272,12 @@ bool RequestHandler::writeFile(const std::string& path, const std::string& data)
     return true;
 }
 
-std::string RequestHandler::generateAutoindex(const std::string& path, const std::string& requestPath)
+std::string RequestHandler::generateAutoindex(const std::string &path, const std::string &requestPath)
 {
-    DIR* dir = opendir(path.c_str());
+    DIR *dir = opendir(path.c_str());
     if (dir == NULL)
         return "";
-    struct dirent* entry;
+    struct dirent *entry;
     std::stringstream html;
     html << "<html>\n";
     html << "<body>\n";
@@ -304,10 +304,10 @@ std::string RequestHandler::generateAutoindex(const std::string& path, const std
             name += "/";
         }
         html << "<a href=\""
-            << href
-            << "\">"
-            << name
-            << "</a><br>\n";
+             << href
+             << "\">"
+             << name
+             << "</a><br>\n";
     }
     html << "</body>\n";
     html << "</html>\n";
@@ -315,15 +315,15 @@ std::string RequestHandler::generateAutoindex(const std::string& path, const std
     return html.str();
 }
 
-const LocationConfig* RequestHandler::findLocation(
-    const ServerConfig& server,
-    const std::string& requestPath) const
+const LocationConfig *RequestHandler::findLocation(
+    const ServerConfig &server,
+    const std::string &requestPath) const
 {
-    const std::vector<LocationConfig>& locations = server.getLocations();
-    const LocationConfig* best = NULL;
+    const std::vector<LocationConfig> &locations = server.getLocations();
+    const LocationConfig *best = NULL;
     for (std::size_t i = 0; i < locations.size(); ++i)
     {
-        const std::string& locationPath = locations[i].getPath();
+        const std::string &locationPath = locations[i].getPath();
         if (locationPath.empty())
             continue;
         bool match = false;
@@ -344,21 +344,21 @@ const LocationConfig* RequestHandler::findLocation(
     return best;
 }
 
-std::string RequestHandler::getRoot(const LocationConfig* location) const
+std::string RequestHandler::getRoot(const LocationConfig *location) const
 {
     if (location != NULL)
         return location->getRoot();
     return _server.getRoot();
 }
 
-std::string RequestHandler::getIndex(const LocationConfig* location) const
+std::string RequestHandler::getIndex(const LocationConfig *location) const
 {
     if (location != NULL)
         return location->getIndex();
     return _server.getIndex();
 }
 
-bool RequestHandler::getAutoindex(const LocationConfig* location) const
+bool RequestHandler::getAutoindex(const LocationConfig *location) const
 {
     if (location != NULL)
         return location->getAutoindex();
@@ -366,12 +366,12 @@ bool RequestHandler::getAutoindex(const LocationConfig* location) const
 }
 
 bool RequestHandler::isMethodAllowed(
-    const LocationConfig* location,
-    const std::string& requestMethod)
+    const LocationConfig *location,
+    const std::string &requestMethod)
 {
     if (location == NULL)
         return true;
-    const std::vector<std::string>& methods = location->getMethods();
+    const std::vector<std::string> &methods = location->getMethods();
     if (methods.empty())
         return true;
     for (std::size_t i = 0; i < methods.size(); ++i)
@@ -382,7 +382,7 @@ bool RequestHandler::isMethodAllowed(
     return false;
 }
 
-bool RequestHandler::hasParentTraversal(const std::string& path)
+bool RequestHandler::hasParentTraversal(const std::string &path)
 {
     std::size_t start = 0;
     while (start < path.size())
@@ -402,7 +402,7 @@ bool RequestHandler::hasParentTraversal(const std::string& path)
     return false;
 }
 
-bool RequestHandler::isSafeFilename(const std::string& filename)
+bool RequestHandler::isSafeFilename(const std::string &filename)
 {
     if (filename.empty())
         return false;
@@ -415,7 +415,7 @@ bool RequestHandler::isSafeFilename(const std::string& filename)
     return true;
 }
 
-HttpResponse RequestHandler::handleGet(const HttpRequest& request, const LocationConfig* location)
+HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig *location)
 {
     std::string index = getIndex(location);
     bool autoindex = getAutoindex(location);
@@ -467,14 +467,14 @@ HttpResponse RequestHandler::handleGet(const HttpRequest& request, const Locatio
     return response;
 }
 
-HttpResponse RequestHandler::handlePost(const HttpRequest& request, const LocationConfig* location)
+HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig *location)
 {
     std::string contentType = request.getHeader("content-type");
     if (contentType.find("multipart/form-data") != std::string::npos)
     {
         if (location == NULL)
             return forbidden();
-        const std::string& uploadStore = location->getUploadStore();
+        const std::string &uploadStore = location->getUploadStore();
         if (uploadStore.empty())
             return forbidden();
         std::string boundary = getBoundary(request);
@@ -528,7 +528,7 @@ HttpResponse RequestHandler::handlePost(const HttpRequest& request, const Locati
     return response;
 }
 
-HttpResponse RequestHandler::handleDelete(const HttpRequest& request, const LocationConfig* location)
+HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const LocationConfig *location)
 {
     std::string path = buildPath(location, request.getPath());
     struct stat info;
@@ -545,31 +545,11 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest& request, const Loca
     return response;
 }
 
-HttpResponse RequestHandler::handle(const HttpRequest& request)
+HttpResponse RequestHandler::handleResolved(const HttpRequest &request)
 {
-    const std::string& requestPath = request.getPath();
-    if (hasParentTraversal(requestPath))
-        return forbidden();
-    const LocationConfig* location = findLocation(_server, requestPath);
-    if (location != NULL && location->getPath() == requestPath + "/")
-    {
-        return redirect(
-            HTTP_MOVED_PERMANENTLY,
-            requestPath + "/");
-    }
-    const std::string& requestMethod = request.getMethod();
-    // if (requestMethod != "GET"
-    //     && requestMethod != "POST"
-    //     && requestMethod != "DELETE")
-    //     return notImplemented();
-    if (!isMethodAllowed(location, requestMethod))
-        return methodNotAllowed();
-    if (location != NULL && location->getRedirectCode() != 0)
-    {
-        return redirect(
-            static_cast<HttpStatus>(location->getRedirectCode()),
-            location->getRedirectUrl());
-    }
+    const LocationConfig *location = findLocation(_server, request.getPath());
+
+    const std::string &requestMethod = request.getMethod();
     if (requestMethod == "GET")
         return handleGet(request, location);
     if (requestMethod == "POST")
@@ -594,13 +574,13 @@ HttpResponse RequestHandler::handleError(HttpStatus status)
     }
 }
 
-const LocationConfig* RequestHandler::getLocation(
-    const HttpRequest& request) const
+const LocationConfig *RequestHandler::getLocation(
+    const HttpRequest &request) const
 {
     return findLocation(_server, request.getPath());
 }
 
-std::string RequestHandler::buildPath(const LocationConfig* location, const std::string& requestPath)
+std::string RequestHandler::buildPath(const LocationConfig *location, const std::string &requestPath)
 {
     std::string root;
     std::string relativePath;
@@ -612,7 +592,7 @@ std::string RequestHandler::buildPath(const LocationConfig* location, const std:
     else
     {
         root = location->getRoot();
-        const std::string& locationPath = location->getPath();
+        const std::string &locationPath = location->getPath();
         if (locationPath.empty())
             return "";
         if (requestPath.size() < locationPath.size())
@@ -627,4 +607,38 @@ std::string RequestHandler::buildPath(const LocationConfig* location, const std:
     if (!root.empty() && root[root.size() - 1] == '/' && !relativePath.empty() && relativePath[0] == '/')
         root.erase(root.size() - 1);
     return root + relativePath;
+}
+
+bool RequestHandler::preCheck(
+    const HttpRequest &request,
+    const LocationConfig *location,
+    HttpResponse &response)
+{
+    const std::string &requestPath = request.getPath();
+    if (hasParentTraversal(requestPath))
+    {
+        response = forbidden();
+        return true;
+    }
+    if (location != NULL && location->getPath() == requestPath + "/")
+    {
+        response = redirect(
+            HTTP_MOVED_PERMANENTLY,
+            requestPath + "/");
+        return true;
+    }
+    const std::string &requestMethod = request.getMethod();
+    if (!isMethodAllowed(location, requestMethod))
+    {
+        response = methodNotAllowed();
+        return true;
+    }
+    if (location != NULL && location->getRedirectCode() != 0)
+    {
+        response = redirect(
+            static_cast<HttpStatus>(location->getRedirectCode()),
+            location->getRedirectUrl());
+        return true;
+    }
+    return false;
 }

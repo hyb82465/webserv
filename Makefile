@@ -29,6 +29,7 @@ SRCS = src/main.cpp \
 	   src/config/TokenStream.cpp \
 	   src/config/LocationConfig.cpp \
 	   src/config/ListenConfig.cpp \
+	   src/config/ConfigValidator.cpp \
 	   src/Utils.cpp 
 OBJS = $(SRCS:.cpp=.o)
 

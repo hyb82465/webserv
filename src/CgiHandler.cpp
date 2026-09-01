@@ -12,26 +12,25 @@
 #include <signal.h>
 
 CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath,
-                int serverPort)
-        :_clientFd(clientFd), _pid(-1), 
-         _stdinFd(-1),_stdoutFd(-1),
-         _stdinOpen(false), _stdoutOpen(false),
-         _executable(executable), _scriptPath(scriptPath),
-          _serverPort(serverPort),
-         _requestBody(""),
-         _bodyOffset(0),
-         _output(""),
-         _environment(),
-         _exitStatus(-1),
-         _childFinished(false),
-         _startTime(0)
+                       int serverPort)
+    : _clientFd(clientFd), _pid(-1),
+      _stdinFd(-1), _stdoutFd(-1),
+      _stdinOpen(false), _stdoutOpen(false),
+      _executable(executable), _scriptPath(scriptPath),
+      _serverPort(serverPort),
+      _requestBody(""),
+      _bodyOffset(0),
+      _output(""),
+      _environment(),
+      _exitStatus(-1),
+      _childFinished(false),
+      _startTime(0)
 {
-
 }
 
 CgiHandler::~CgiHandler()
 {
-    if(_stdinFd != -1)
+    if (_stdinFd != -1)
         close(_stdinFd);
     if (_stdoutFd != -1)
         close(_stdoutFd);
@@ -60,30 +59,30 @@ void CgiHandler::start(const HttpRequest &request)
     }
 
     _requestBody = request.getBody();
-    _bodyOffset = 0;//no data to CGI.
+    _bodyOffset = 0; // no data to CGI.
 
     buildEnvironment(request);
 
-    setNonBlocking(inputPipe[1]);// use to write data to CGI
-    setNonBlocking(outputPipe[0]);// to read data from CGI
+    setNonBlocking(inputPipe[1]);  // use to write data to CGI
+    setNonBlocking(outputPipe[0]); // to read data from CGI
 
     _pid = fork();
 
     if (_pid == -1)
     {
         close(inputPipe[1]);
-        close(inputPipe[0]);            
+        close(inputPipe[0]);
         close(outputPipe[1]);
         close(outputPipe[0]);
         throw std::runtime_error("fork failed");
     }
 
-    if (_pid == 0)//child
+    if (_pid == 0) // child
     {
         close(inputPipe[1]);
         close(outputPipe[0]);
 
-        if (dup2(inputPipe[0], STDIN_FILENO) == -1)// data read form pipe as CGI stdin
+        if (dup2(inputPipe[0], STDIN_FILENO) == -1) // data read form pipe as CGI stdin
             _exit(1);
         if (dup2(outputPipe[1], STDOUT_FILENO) == -1)
             _exit(1);
@@ -97,14 +96,14 @@ void CgiHandler::start(const HttpRequest &request)
         char *argv[3]; // CGI run arguments
         argv[0] = const_cast<char *>(_executable.c_str());
         std::string fileName = getFileName(_scriptPath);
-        argv[1]= const_cast<char *>(fileName.c_str());
+        argv[1] = const_cast<char *>(fileName.c_str());
         argv[2] = NULL;
         execve(_executable.c_str(), argv, envp);
 
         freeEnvp(envp);
         _exit(1);
     }
-    //father
+    // father
     _startTime = std::time(NULL);
     close(inputPipe[0]);
     close(outputPipe[1]);
@@ -113,8 +112,7 @@ void CgiHandler::start(const HttpRequest &request)
     _stdoutFd = outputPipe[0];
 
     _stdinOpen = true;
-    _stdoutOpen = true;        
-
+    _stdoutOpen = true;
 }
 
 bool CgiHandler::writeBody()
@@ -127,7 +125,7 @@ bool CgiHandler::writeBody()
         return true;
     }
 
-    ssize_t bytes = write(_stdinFd, _requestBody.c_str()+_bodyOffset, _requestBody.size() - _bodyOffset);
+    ssize_t bytes = write(_stdinFd, _requestBody.c_str() + _bodyOffset, _requestBody.size() - _bodyOffset);
     if (bytes > 0)
     {
         _bodyOffset += static_cast<std::size_t>(bytes);
@@ -171,9 +169,7 @@ bool CgiHandler::readOutput()
     {
         closeOutput();
         return true;
-
     }
-
 }
 
 void CgiHandler::closeInput()
@@ -234,7 +230,7 @@ void CgiHandler::setNonBlocking(int fd)
 
     if (flags == -1)
         throw std::runtime_error("fcntl(F_GETFL) failed");
-    if (fcntl(fd,F_SETFL,flags | O_NONBLOCK) == -1)
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
         throw std::runtime_error("fcntl(F_SETFL) failed");
 }
 void CgiHandler::buildEnvironment(const HttpRequest &request)
@@ -244,7 +240,7 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("REQUEST_METHOD=" + request.getMethod());
     _environment.push_back("QUERY_STRING=" + request.getQuery());
     _environment.push_back("CONTENT_TYPE=" + request.getHeader("Content-Type"));
-    
+
     std::ostringstream length;
     length << request.getBody().size();
 
@@ -258,7 +254,7 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     std::ostringstream port;
     port << _serverPort;
     _environment.push_back("SERVER_PORT=" + port.str());
-    _environment.push_back("REMOTE_ADDR=127.0.0.1" );
+    _environment.push_back("REMOTE_ADDR=127.0.0.1");
     _environment.push_back("PATH_INFO=");
     _environment.push_back("REDIRECT_STATUS=200");
 }
@@ -281,16 +277,16 @@ void CgiHandler::freeEnvp(char **envp) const
         return;
     for (std::size_t i = 0; envp[i] != NULL; ++i)
         delete[] envp[i];
-    delete [] envp;
+    delete[] envp;
 }
 
 std::string CgiHandler::getDirectory(const std::string &path) const
 {
     std::string::size_type pos = path.find_last_of('/');
     if (pos == std::string::npos)
-        return "."; //meancurrent directory.
+        return "."; // meancurrent directory.
     if (pos == 0)
-        return "/";//mean root directory;
+        return "/"; // mean root directory;
     return path.substr(0, pos);
 }
 
@@ -310,7 +306,7 @@ bool CgiHandler::waitForChild()
 
     int status;
 
-    pid_t result =waitpid(_pid, &status, WNOHANG);
+    pid_t result = waitpid(_pid, &status, WNOHANG);
 
     if (result == 0)
         return false;
@@ -354,7 +350,6 @@ void CgiHandler::killChild()
         _exitStatus = status;
         _childFinished = true;
         _pid = -1;
-
     }
 
     // closeInput();
@@ -365,5 +360,5 @@ bool CgiHandler::isChildSuccess() const
 {
     if (!_childFinished)
         return false;
-    return WIFEXITED(_exitStatus) && WEXITSTATUS(_exitStatus) == 0; 
+    return WIFEXITED(_exitStatus) && WEXITSTATUS(_exitStatus) == 0;
 }

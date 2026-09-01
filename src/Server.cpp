@@ -762,10 +762,7 @@ void Server::run()
         }
     }
     if (_listenFds.empty())
-    {
-        std::cerr << "listen socket failed" << std::endl;
-        return;
-    }
+        throw std::runtime_error("Failed to create any listening socket");
     while (g_running)
     {
         // poll
@@ -777,8 +774,7 @@ void Server::run()
         {
             if (!g_running)
                 break;
-            std::cerr << "poll failed" << std::endl;
-            return;
+            throw std::runtime_error("poll failed");
         }
 
         checkCgiTimeouts();
@@ -830,10 +826,7 @@ void Server::run()
             }
             // Listen Socket
             if (isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-            {
-                std::cerr << "listen socket error" << std::endl;
-                return;
-            }
+                throw std::runtime_error("listen socket error");
             if (!isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
             {
                 std::cerr << "client connection closed or invalid" << std::endl;

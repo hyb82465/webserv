@@ -19,6 +19,8 @@
 #include "Signal.hpp"
 
 #include <iostream>
+#include <stdexcept>
+#include <vector>
 
 volatile sig_atomic_t g_running = 1;
 

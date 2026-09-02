@@ -5,7 +5,6 @@
 #include <sys/wait.h>
 
 #include <cstring>
-#include <cerrno>
 #include <cstdlib>
 #include <sstream>
 #include <stdexcept>

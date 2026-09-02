@@ -14,7 +14,6 @@
 #include <cstring>
 #include <cstddef>
 #include <fcntl.h>
-// #include <cerrno>
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
@@ -74,6 +73,18 @@ int Server::setupListenSocket(const ListenConfig &listenConfig)
     if (fd == -1)
     {
         std::cerr << "socket failed" << std::endl;
+        return -1;
+    }
+    int reuse = 1;
+    if (setsockopt(
+            fd,
+            SOL_SOCKET,
+            SO_REUSEADDR,
+            &reuse,
+            sizeof(reuse)) == -1)
+    {
+        std::cerr << "setsockopt SO_REUSEADDR failed" << std::endl;
+        close(fd);
         return -1;
     }
 

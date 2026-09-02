@@ -21,6 +21,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <csignal>
 
 volatile sig_atomic_t g_running = 1;
 
@@ -41,6 +42,7 @@ int main(int argc, char **argv)
 	try
 	{
 		std::signal(SIGINT, handleSignal);
+		std::signal(SIGPIPE, SIG_IGN);
 
 		ConfigParser parser;
 		std::vector<ServerConfig> servers;

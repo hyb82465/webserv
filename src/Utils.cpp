@@ -2,7 +2,6 @@
 #include <sstream>
 #include <iomanip>
 #include <cctype>
-#include <sstream>
 
 std::string Utils::trim(const std::string &line)
 {

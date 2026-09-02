@@ -38,11 +38,25 @@ HttpResponse RequestHandler::notFound()
         "404 Not Found");
 }
 
-HttpResponse RequestHandler::methodNotAllowed()
+HttpResponse RequestHandler::methodNotAllowed(const LocationConfig *location)
 {
-    return errorResponse(
+    HttpResponse response = errorResponse(
         HTTP_METHOD_NOT_ALLOWED,
         "405 Method Not Allowed");
+    if (location != NULL)
+    {
+        const std::vector<std::string> &methods = location->getMethods();
+        std::string allow;
+        for (std::size_t i = 0; i < methods.size(); ++i)
+        {
+            if (!allow.empty())
+                allow += ", ";
+            allow += methods[i];
+        }
+        if (!allow.empty())
+            response.setHeader("Allow", allow);
+    }
+    return response;
 }
 
 HttpResponse RequestHandler::payloadTooLarge()
@@ -600,7 +614,7 @@ bool RequestHandler::preCheck(
     const std::string &requestMethod = request.getMethod();
     if (!isMethodAllowed(location, requestMethod))
     {
-        response = methodNotAllowed();
+        response = methodNotAllowed(location);
         return true;
     }
     if (location != NULL && location->getRedirectCode() != 0)

@@ -28,14 +28,14 @@ private:
     RequestHandler &operator=(const RequestHandler &other);
 
     // response
-    HttpResponse badRequest();          // 400
-    HttpResponse forbidden();           // 403
-    HttpResponse notFound();            // 404
-    HttpResponse methodNotAllowed();    // 405
-    HttpResponse payloadTooLarge();     // 413
-    HttpResponse internalServerError(); // 500
-    HttpResponse notImplemented();      // 501
-    HttpResponse versionNotSupported(); // 505
+    HttpResponse badRequest();                                     // 400
+    HttpResponse forbidden();                                      // 403
+    HttpResponse notFound();                                       // 404
+    HttpResponse methodNotAllowed(const LocationConfig *location); // 405
+    HttpResponse payloadTooLarge();                                // 413
+    HttpResponse internalServerError();                            // 500
+    HttpResponse notImplemented();                                 // 501
+    HttpResponse versionNotSupported();                            // 505
     HttpResponse errorResponse(HttpStatus status, const std::string &defaultBody);
     HttpResponse autoindexResponse(
         const std::string &path,

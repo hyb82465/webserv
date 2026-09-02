@@ -239,7 +239,7 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("GATEWAY_INTERFACE=CGI/1.1");
     _environment.push_back("REQUEST_METHOD=" + request.getMethod());
     _environment.push_back("QUERY_STRING=" + request.getQuery());
-    _environment.push_back("CONTENT_TYPE=" + request.getHeader("Content-Type"));
+    _environment.push_back("CONTENT_TYPE=" + request.getHeader("content-type"));
 
     std::ostringstream length;
     length << request.getBody().size();

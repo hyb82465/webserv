@@ -32,8 +32,8 @@ std::string HttpResponse::statusToString() const
         return "413 Payload Too Large";
     case HTTP_INTERNAL_SERVER_ERROR:
         return "500 Internal Server Error";
-    // case HTTP_NOT_IMPLEMENTED:
-    //     return "501 Not Implemented";
+    case HTTP_NOT_IMPLEMENTED:
+        return "501 Not Implemented";
     case HTTP_VERSION_NOT_SUPPORTED:
         return "505 Version Not Supported";
     default:

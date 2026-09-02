@@ -17,6 +17,62 @@ RequestHandler::~RequestHandler()
 {
 }
 
+HttpResponse RequestHandler::badRequest()
+{
+    return errorResponse(
+        HTTP_BAD_REQUEST,
+        "400 Bad Request");
+}
+
+HttpResponse RequestHandler::forbidden()
+{
+    return errorResponse(
+        HTTP_FORBIDDEN,
+        "403 Forbidden");
+}
+
+HttpResponse RequestHandler::notFound()
+{
+    return errorResponse(
+        HTTP_NOT_FOUND,
+        "404 Not Found");
+}
+
+HttpResponse RequestHandler::methodNotAllowed()
+{
+    return errorResponse(
+        HTTP_METHOD_NOT_ALLOWED,
+        "405 Method Not Allowed");
+}
+
+HttpResponse RequestHandler::payloadTooLarge()
+{
+    return errorResponse(
+        HTTP_PAYLOAD_TOO_LARGE,
+        "413 Payload Too Large");
+}
+
+HttpResponse RequestHandler::internalServerError()
+{
+    return errorResponse(
+        HTTP_INTERNAL_SERVER_ERROR,
+        "500 Internal Server Error");
+}
+
+HttpResponse RequestHandler::notImplemented()
+{
+    return errorResponse(
+        HTTP_NOT_IMPLEMENTED,
+        "501 Not Implemented");
+}
+
+HttpResponse RequestHandler::versionNotSupported()
+{
+    return errorResponse(
+        HTTP_VERSION_NOT_SUPPORTED,
+        "505 Version Not Supported");
+}
+
 HttpResponse RequestHandler::errorResponse(
     HttpStatus status,
     const std::string &defaultBody)
@@ -60,63 +116,6 @@ HttpResponse RequestHandler::autoindexResponse(
     response.setHeader("Content-Type", "text/html");
     response.setBody(generateAutoindex(path, requestPath));
     return response;
-}
-
-HttpResponse RequestHandler::badRequest()
-{
-    return errorResponse(
-        HTTP_BAD_REQUEST,
-        "400 Bad Request");
-}
-
-HttpResponse RequestHandler::forbidden()
-{
-    return errorResponse(
-        HTTP_FORBIDDEN,
-        "403 Forbidden");
-}
-
-HttpResponse RequestHandler::notFound()
-{
-    return errorResponse(
-        HTTP_NOT_FOUND,
-        "404 Not Found");
-}
-
-HttpResponse RequestHandler::methodNotAllowed()
-{
-    return errorResponse(
-        HTTP_METHOD_NOT_ALLOWED,
-        "405 Method Not Allowed");
-}
-
-HttpResponse RequestHandler::payloadTooLarge()
-{
-    return errorResponse(
-        HTTP_PAYLOAD_TOO_LARGE,
-        "413 Payload Too Large");
-}
-
-HttpResponse RequestHandler::internalServerError()
-{
-    return errorResponse(
-        HTTP_INTERNAL_SERVER_ERROR,
-        "500 Internal Server Error");
-}
-
-// HttpResponse RequestHandler::notImplemented()
-// {
-//     return errorResponse(
-//         HTTP_NOT_IMPLEMENTED,
-//         "501 Not Implemented"
-//     );
-// }
-
-HttpResponse RequestHandler::versionNotSupported()
-{
-    return errorResponse(
-        HTTP_VERSION_NOT_SUPPORTED,
-        "505 Version Not Supported");
 }
 
 HttpResponse RequestHandler::redirect(
@@ -545,35 +544,6 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
     return response;
 }
 
-HttpResponse RequestHandler::handleResolved(const HttpRequest &request)
-{
-    const LocationConfig *location = findLocation(_server, request.getPath());
-
-    const std::string &requestMethod = request.getMethod();
-    if (requestMethod == "GET")
-        return handleGet(request, location);
-    if (requestMethod == "POST")
-        return handlePost(request, location);
-    if (requestMethod == "DELETE")
-        return handleDelete(request, location);
-    return internalServerError();
-}
-
-HttpResponse RequestHandler::handleError(HttpStatus status)
-{
-    switch (status)
-    {
-    case HTTP_BAD_REQUEST:
-        return badRequest();
-    case HTTP_PAYLOAD_TOO_LARGE:
-        return payloadTooLarge();
-    case HTTP_VERSION_NOT_SUPPORTED:
-        return versionNotSupported();
-    default:
-        return internalServerError();
-    }
-}
-
 const LocationConfig *RequestHandler::getLocation(
     const HttpRequest &request) const
 {
@@ -641,4 +611,33 @@ bool RequestHandler::preCheck(
         return true;
     }
     return false;
+}
+
+HttpResponse RequestHandler::handleResolved(const HttpRequest &request)
+{
+    const LocationConfig *location = findLocation(_server, request.getPath());
+
+    const std::string &requestMethod = request.getMethod();
+    if (requestMethod == "GET")
+        return handleGet(request, location);
+    if (requestMethod == "POST")
+        return handlePost(request, location);
+    if (requestMethod == "DELETE")
+        return handleDelete(request, location);
+    return notImplemented();
+}
+
+HttpResponse RequestHandler::handleError(HttpStatus status)
+{
+    switch (status)
+    {
+    case HTTP_BAD_REQUEST:
+        return badRequest();
+    case HTTP_PAYLOAD_TOO_LARGE:
+        return payloadTooLarge();
+    case HTTP_VERSION_NOT_SUPPORTED:
+        return versionNotSupported();
+    default:
+        return internalServerError();
+    }
 }

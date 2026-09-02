@@ -28,10 +28,6 @@ private:
     RequestHandler &operator=(const RequestHandler &other);
 
     // response
-    HttpResponse errorResponse(HttpStatus status, const std::string &defaultBody);
-    HttpResponse autoindexResponse(
-        const std::string &path,
-        const std::string &requestPath);
     HttpResponse badRequest();          // 400
     HttpResponse forbidden();           // 403
     HttpResponse notFound();            // 404
@@ -40,8 +36,12 @@ private:
     HttpResponse internalServerError(); // 500
     HttpResponse notImplemented();      // 501
     HttpResponse versionNotSupported(); // 505
-
+    HttpResponse errorResponse(HttpStatus status, const std::string &defaultBody);
+    HttpResponse autoindexResponse(
+        const std::string &path,
+        const std::string &requestPath);
     HttpResponse redirect(HttpStatus status, const std::string &url);
+
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
     std::vector<MultipartPart> parseMultipart(
@@ -65,14 +65,15 @@ public:
     RequestHandler(const ServerConfig &config);
     ~RequestHandler();
 
-    HttpResponse handleResolved(const HttpRequest &request);
-    HttpResponse handleError(HttpStatus status);
     const LocationConfig *getLocation(const HttpRequest &request) const;
     std::string buildPath(const LocationConfig *location, const std::string &requestPath);
     bool preCheck(
         const HttpRequest &request,
         const LocationConfig *location,
         HttpResponse &response);
+
+    HttpResponse handleResolved(const HttpRequest &request);
+    HttpResponse handleError(HttpStatus status);
 };
 
 #endif

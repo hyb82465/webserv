@@ -6,6 +6,7 @@
 #include "Signal.hpp"
 #include "Utils.hpp"
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netdb.h>
 #include <poll.h>
 #include <utility>
@@ -230,6 +231,26 @@ void Server::processRequest(int fd, std::size_t &i)
                 state.keepAlive = false;
                 response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
                 response.setHeader("Connection", "close");
+                it->second.setWriteBuffer(response.getResponse());
+                _pollFds[i].events = POLLOUT;
+                ++i;
+                return;
+            }
+            struct stat scriptInfo;
+            HttpStatus cgiError = HTTP_OK;
+            if (stat(scriptPath.c_str(), &scriptInfo) == -1)
+                cgiError = HTTP_NOT_FOUND;
+            else if (!S_ISREG(scriptInfo.st_mode))
+                cgiError = HTTP_FORBIDDEN;
+            else if (access(scriptPath.c_str(), R_OK) == -1)
+                cgiError = HTTP_FORBIDDEN;
+            if (cgiError != HTTP_OK)
+            {
+                response = handler.handleError(cgiError);
+                if (state.keepAlive)
+                    response.setHeader("Connection", "keep-alive");
+                else
+                    response.setHeader("Connection", "close");
                 it->second.setWriteBuffer(response.getResponse());
                 _pollFds[i].events = POLLOUT;
                 ++i;

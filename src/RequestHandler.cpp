@@ -647,6 +647,10 @@ HttpResponse RequestHandler::handleError(HttpStatus status)
     {
     case HTTP_BAD_REQUEST:
         return badRequest();
+    case HTTP_FORBIDDEN:
+        return forbidden();
+    case HTTP_NOT_FOUND:
+        return notFound();
     case HTTP_PAYLOAD_TOO_LARGE:
         return payloadTooLarge();
     case HTTP_VERSION_NOT_SUPPORTED:

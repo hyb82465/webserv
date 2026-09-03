@@ -84,7 +84,18 @@ void ConfigValidator::validateLocations(const ServerConfig &server) const
     const std::vector<LocationConfig> &locations = server.getLocations();
 
     for (size_t i = 0; i < locations.size(); ++i)
+    {
         validateLocation(locations[i]);
+        for (size_t j = i + 1; j < locations.size(); ++j)
+        {
+            if (locations[i].getPath() == locations[j].getPath())
+            {
+                throw std::runtime_error(
+                    "Duplicate location path: " + locations[i].getPath());
+            }
+        }
+    }
+        
 }
 
 void ConfigValidator::validateLocation(const LocationConfig &location) const

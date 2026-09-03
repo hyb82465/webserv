@@ -716,11 +716,15 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
     }
     std::string headers = output.substr(0, pos);
     std::string body = output.substr(pos + separatorLength);
+    std::string lowerHeaders = Utils::toLower(headers);
+    bool hasContentLength = (lowerHeaders.find("content-length:") != std::string::npos);
     std::string response;
     response += "HTTP/1.1 200 OK\r\n";
     response += headers;
+    response += "\r\n";
     // Add Content-Length
-    response += "\r\nContent-Length: " + Utils::sizetToString(body.size()) + "\r\n";
+    if (!hasContentLength)
+        response += "Content-Length: " + Utils::sizetToString(body.size()) + "\r\n";
     if (keepAlive)
         response += "Connection: keep-alive\r\n";
     else

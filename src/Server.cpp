@@ -259,12 +259,6 @@ void Server::processRequest(int fd, std::size_t &i)
             try
             {
                 startCgi(fd, request, scriptPath, executable);
-                std::cout << "[CGI START]"
-                          << " fd=" << fd
-                          << " method=" << request.getMethod()
-                          << " path=" << request.getPath()
-                          << " body=" << request.getBody().size()
-                          << std::endl;
                 _pollFds[i].events = 0;
             }
             catch (const std::exception &e)
@@ -403,7 +397,6 @@ void Server::handleWrite(int fd, std::size_t &i)
         RequestState &state = it->second.getRequestState();
 
         std::string::size_type end = response.find("\r\n");
-
         std::cout << "[RESPONSE]"
                   << " fd=" << fd
                   << " method=" << state.request.getMethod()
@@ -459,10 +452,6 @@ void Server::startCgi(int clientFd, const HttpRequest &request,
     CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort);
     try
     {
-        std::cout << "[CGI DEBUG]"
-                  << " executable=" << executable
-                  << " scriptPath=" << scriptPath
-                  << std::endl;
         cgi->start(request);
     }
     catch (...)
@@ -543,50 +532,35 @@ void Server::addCgi(CgiHandler *cgi)
     if (cgi == NULL)
         return;
     _cgiHandlers.push_back(cgi);
-
     if (cgi->getStdinFd() != -1)
-    {
         _cgiFds[cgi->getStdinFd()] = cgi;
-    }
-
     if (cgi->getStdoutFd() != -1)
-    {
         _cgiFds[cgi->getStdoutFd()] = cgi;
-    }
 }
 
 void Server::removeCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
-
-    int stdinFd =
-        cgi->getStdinFd();
-
-    int stdoutFd =
-        cgi->getStdoutFd();
-
+    int stdinFd = cgi->getStdinFd();
+    int stdoutFd = cgi->getStdoutFd();
     if (stdinFd != -1)
     {
         _cgiFds.erase(stdinFd);
         removePollFd(stdinFd);
     }
-
     if (stdoutFd != -1)
     {
         _cgiFds.erase(stdoutFd);
         removePollFd(stdoutFd);
     }
-
     for (std::vector<CgiHandler *>::iterator it = _cgiHandlers.begin();
          it != _cgiHandlers.end(); ++it)
     {
         if (*it == cgi)
         {
             delete *it;
-
             _cgiHandlers.erase(it);
-
             return;
         }
     }
@@ -673,8 +647,7 @@ void Server::addCgiPollFds(CgiHandler *cgi)
 
 void Server::checkCgiChildren()
 {
-    for (std::size_t i = 0;
-         i < _cgiHandlers.size();)
+    for (std::size_t i = 0; i < _cgiHandlers.size();)
     {
         CgiHandler *cgi = _cgiHandlers[i];
 
@@ -687,7 +660,6 @@ void Server::checkCgiChildren()
                 continue;
             }
         }
-
         ++i;
     }
 }
@@ -720,30 +692,76 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
         pos = output.find("\n\n");
         separatorLength = 2;
     }
-    // CGI returned no headers.
+    std::string statusLine = "200 OK";
+    std::string normalizedHeaders;
+    bool hasContentLength = false;
+    std::string body;
     if (pos == std::string::npos)
     {
-        std::string response;
-        response += "HTTP/1.1 200 OK\r\n";
-        response += "Content-Type: text/html\r\n";
-        response += "Content-Length: " + Utils::sizetToString(output.size()) + "\r\n";
-        if (keepAlive)
-            response += "Connection: keep-alive\r\n";
-        else
-            response += "Connection: close\r\n";
-        response += "\r\n";
-        response += output;
-        return response;
+        body = output;
+        normalizedHeaders = "Content-Type: text/html\r\n";
     }
-    std::string headers = output.substr(0, pos);
-    std::string body = output.substr(pos + separatorLength);
-    std::string lowerHeaders = Utils::toLower(headers);
-    bool hasContentLength = (lowerHeaders.find("content-length:") != std::string::npos);
+    else
+    {
+        std::string headers = output.substr(0, pos);
+        body = output.substr(pos + separatorLength);
+        std::size_t start = 0;
+        while (start < headers.size())
+        {
+            std::size_t end = headers.find('\n', start);
+            std::string line;
+            if (end == std::string::npos)
+                line = headers.substr(start);
+            else
+                line = headers.substr(start, end - start);
+            if (!line.empty() && line[line.size() - 1] == '\r')
+                line.erase(line.size() - 1);
+            std::size_t colon = line.find(':');
+            if (colon != std::string::npos)
+            {
+                std::string name =
+                    Utils::toLower(Utils::trim(line.substr(0, colon)));
+                std::string value =
+                    Utils::trim(line.substr(colon + 1));
+                if (name == "status")
+                {
+                    bool valid =
+                        value.size() >= 5 
+                        && value[3] == ' ' 
+                        && value[0] >= '0' && value[0] <= '9' 
+                        && value[1] >= '0' && value[1] <= '9' 
+                        && value[2] >= '0' && value[2] <= '9';
+                    int statusCode = 0;
+                    if (valid)
+                    {
+                        statusCode =
+                            (value[0] - '0') * 100
+                            + (value[1] - '0') * 10
+                            + (value[2] - '0');
+                    }
+                    if (valid && statusCode >= 100 && statusCode <= 599)
+                        statusLine = value;
+                    else
+                        statusLine = "500 Internal Server Error";
+                }
+                else
+                {
+                    if (name == "content-length")
+                        hasContentLength = true;
+                    normalizedHeaders += line;
+                    normalizedHeaders += "\r\n";
+                }
+            }
+            if (end == std::string::npos)
+                break;
+            start = end + 1;
+        }
+    }
     std::string response;
-    response += "HTTP/1.1 200 OK\r\n";
-    response += headers;
+    response += "HTTP/1.1 ";
+    response += statusLine;
     response += "\r\n";
-    // Add Content-Length
+    response += normalizedHeaders;
     if (!hasContentLength)
         response += "Content-Length: " + Utils::sizetToString(body.size()) + "\r\n";
     if (keepAlive)

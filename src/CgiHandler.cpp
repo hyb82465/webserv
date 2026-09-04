@@ -10,8 +10,11 @@
 #include <stdexcept>
 #include <signal.h>
 
-CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath,
-                       int serverPort)
+CgiHandler::CgiHandler(
+    int clientFd,
+    const std::string &executable,
+    const std::string &scriptPath,
+    int serverPort)
     : _clientFd(clientFd), _pid(-1),
       _stdinFd(-1), _stdoutFd(-1),
       _stdinOpen(false), _stdoutOpen(false),
@@ -24,8 +27,7 @@ CgiHandler::CgiHandler(int clientFd, const std::string &executable, const std::s
       _exitStatus(-1),
       _childFinished(false),
       _startTime(0)
-{
-}
+{}
 
 CgiHandler::~CgiHandler()
 {
@@ -180,6 +182,7 @@ void CgiHandler::closeInput()
     }
     _stdinOpen = false;
 }
+
 void CgiHandler::closeOutput()
 {
     if (_stdoutFd != -1)
@@ -232,31 +235,63 @@ void CgiHandler::setNonBlocking(int fd)
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
         throw std::runtime_error("fcntl(F_SETFL) failed");
 }
+
 void CgiHandler::buildEnvironment(const HttpRequest &request)
 {
     _environment.clear();
+
+    const std::string &path = request.getPath();
+    const std::string &query = request.getQuery();
+
+    std::string requestUri = path;
+    if (!query.empty())
+    {
+        requestUri += "?";
+        requestUri += query;
+    }
+
+    std::ostringstream contentLength;
+    contentLength << request.getBody().size();
+
+    std::ostringstream serverPort;
+    serverPort << _serverPort;
+
+    // CGI basic information
     _environment.push_back("GATEWAY_INTERFACE=CGI/1.1");
-    _environment.push_back("REQUEST_METHOD=" + request.getMethod());
-    _environment.push_back("QUERY_STRING=" + request.getQuery());
-    _environment.push_back("CONTENT_TYPE=" + request.getHeader("content-type"));
-
-    std::ostringstream length;
-    length << request.getBody().size();
-
-    _environment.push_back("CONTENT_LENGTH=" + length.str());
-    _environment.push_back("SERVER_PROTOCOL=" + request.getVersion());
-    _environment.push_back("SCRIPT_NAME=" + request.getPath());
-    _environment.push_back("SCRIPT_FILENAME=" + _scriptPath);
-
-    _environment.push_back("SERVER_NAME=localhost");
-
-    std::ostringstream port;
-    port << _serverPort;
-    _environment.push_back("SERVER_PORT=" + port.str());
-    _environment.push_back("REMOTE_ADDR=127.0.0.1");
-    _environment.push_back("PATH_INFO=");
     _environment.push_back("REDIRECT_STATUS=200");
+
+    // HTTP request information
+
+    _environment.push_back("REQUEST_METHOD=" + request.getMethod());
+    _environment.push_back("SERVER_PROTOCOL=" + request.getVersion());
+    _environment.push_back("REQUEST_URI=" + requestUri);
+    _environment.push_back("QUERY_STRING=" + request.getQuery());
+
+    // CGI script information
+    _environment.push_back("SCRIPT_NAME=" + path);
+    _environment.push_back("SCRIPT_FILENAME=" + _scriptPath);
+    _environment.push_back("PATH_INFO=" + path);
+
+    // request body information
+    _environment.push_back("CONTENT_TYPE=" + request.getHeader("content-type"));
+    _environment.push_back("CONTENT_LENGTH=" + contentLength.str());
+
+    // server and client information
+    _environment.push_back("SERVER_NAME=localhost");
+    _environment.push_back("SERVER_PORT=" + serverPort.str());
+    _environment.push_back("REMOTE_ADDR=127.0.0.1");
+
+    // Common HTTP headers
+    _environment.push_back(
+        "HTTP_HOST=" + request.getHeader("host"));
+    _environment.push_back(
+        "HTTP_USER_AGENT=" + request.getHeader("user-agent"));
+    _environment.push_back(
+        "HTTP_ACCEPT=" + request.getHeader("accept"));
+    _environment.push_back(
+        "HTTP_COOKIE=" + request.getHeader("cookie"));
 }
+
 char **CgiHandler::creatEnvp() const
 {
     char **envp = new char *[_environment.size() + 1];
@@ -270,6 +305,7 @@ char **CgiHandler::creatEnvp() const
 
     return envp;
 }
+
 void CgiHandler::freeEnvp(char **envp) const
 {
     if (envp == NULL)
@@ -320,6 +356,7 @@ bool CgiHandler::waitForChild()
 
     return false;
 }
+
 bool CgiHandler::hasTimedOut(int timeoutSeconds) const
 {
     if (_pid <= 0)

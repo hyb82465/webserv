@@ -30,6 +30,10 @@ std::string HttpResponse::statusToString() const
         return "405 Method Not Allowed";
     case HTTP_PAYLOAD_TOO_LARGE:
         return "413 Payload Too Large";
+    case HTTP_URI_TOO_LONG:
+        return "414 URI Too Long";
+    case HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE:
+        return "431 Request Header Fields Too Large";
     case HTTP_INTERNAL_SERVER_ERROR:
         return "500 Internal Server Error";
     case HTTP_NOT_IMPLEMENTED:

@@ -86,9 +86,28 @@ StageResult RequestParser::parseRequestLineStage(
     const std::string &buffer,
     RequestState &state)
 {
+    const std::size_t MAX_REQUEST_LINE_SIZE = 8192; // 8kb
+    if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
     std::size_t lineEnd = buffer.find("\r\n", state.pos);
     if (lineEnd == std::string::npos)
+    {
+        if (buffer.size() - state.pos > MAX_REQUEST_LINE_SIZE)
+        {
+            state.request._status = HTTP_URI_TOO_LONG;
+            return STAGE_ERROR;
+        }
         return STAGE_INCOMPLETE;
+    }
+    std::size_t requestLineSize = lineEnd - state.pos + 2;
+    if (requestLineSize > MAX_REQUEST_LINE_SIZE)
+    {
+        state.request._status = HTTP_URI_TOO_LONG;
+        return STAGE_ERROR;
+    }
     std::string line = buffer.substr(state.pos, lineEnd - state.pos);
     state.request._status = parseRequestLine(line, state.request);
     if (state.request._status != HTTP_OK)
@@ -103,10 +122,29 @@ StageResult RequestParser::parseHeadersStage(
     RequestState &state,
     std::size_t maxBodySize)
 {
+    const std::size_t MAX_HEADERS_SIZE = 32768; // 32kb
+    if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
     std::size_t headerStart = state.pos;
     std::size_t headerEnd = buffer.find("\r\n\r\n", state.pos);
     if (headerEnd == std::string::npos)
+    {
+        if (buffer.size() - headerStart > MAX_HEADERS_SIZE)
+        {
+            state.request._status = HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE;
+            return STAGE_ERROR;
+        }
         return STAGE_INCOMPLETE;
+    }
+    std::size_t headersSize = headerEnd - headerStart + 4;
+    if (headersSize > MAX_HEADERS_SIZE)
+    {
+        state.request._status = HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE;
+        return STAGE_ERROR;
+    }
     std::string headers = buffer.substr(headerStart, (headerEnd - headerStart));
     state.request._status = parseHeaders(headers, state.request);
     if (state.request._status != HTTP_OK)

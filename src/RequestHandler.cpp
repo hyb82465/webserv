@@ -66,6 +66,20 @@ HttpResponse RequestHandler::payloadTooLarge()
         "413 Payload Too Large");
 }
 
+HttpResponse RequestHandler::uriTooLong()
+{
+    return errorResponse(
+        HTTP_URI_TOO_LONG,
+        "414 URI Too Long");
+}
+
+HttpResponse RequestHandler::requestHeadersTooLarge()
+{
+    return errorResponse(
+        HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE,
+        "431 Request Header Fields Too Large");
+}
+
 HttpResponse RequestHandler::internalServerError()
 {
     return errorResponse(
@@ -653,6 +667,10 @@ HttpResponse RequestHandler::handleError(HttpStatus status)
         return notFound();
     case HTTP_PAYLOAD_TOO_LARGE:
         return payloadTooLarge();
+    case HTTP_URI_TOO_LONG:
+        return uriTooLong();
+    case HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE:
+        return requestHeadersTooLarge();
     case HTTP_VERSION_NOT_SUPPORTED:
         return versionNotSupported();
     default:

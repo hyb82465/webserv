@@ -33,6 +33,8 @@ private:
     HttpResponse notFound();                                       // 404
     HttpResponse methodNotAllowed(const LocationConfig *location); // 405
     HttpResponse payloadTooLarge();                                // 413
+    HttpResponse uriTooLong();                                     // 414
+    HttpResponse requestHeadersTooLarge();                         // 431
     HttpResponse internalServerError();                            // 500
     HttpResponse notImplemented();                                 // 501
     HttpResponse versionNotSupported();                            // 505

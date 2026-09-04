@@ -281,15 +281,26 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("SERVER_PORT=" + serverPort.str());
     _environment.push_back("REMOTE_ADDR=127.0.0.1");
 
-    // Common HTTP headers
-    _environment.push_back(
-        "HTTP_HOST=" + request.getHeader("host"));
-    _environment.push_back(
-        "HTTP_USER_AGENT=" + request.getHeader("user-agent"));
-    _environment.push_back(
-        "HTTP_ACCEPT=" + request.getHeader("accept"));
-    _environment.push_back(
-        "HTTP_COOKIE=" + request.getHeader("cookie"));
+    const std::map<std::string, std::string> &headers = request.getHeaders();
+    for (std::map<std::string, std::string>::const_iterator it = headers.begin();
+        it != headers.end();
+        ++it)
+    {
+        if (it->first == "content-type" || it->first == "content-length")
+            continue;
+        std::string variableName = "HTTP_";
+        for (std::size_t i = 0; i < it->first.size(); ++i)
+        {
+            char c = it->first[i];
+            if (c == '-')
+                variableName += '_';
+            else if (c >= 'a' && c <= 'z')
+                variableName += static_cast<char>(c - 'a' + 'A');
+            else
+                variableName += c;
+        }
+        _environment.push_back(variableName + "=" + it->second);
+    }
 }
 
 char **CgiHandler::creatEnvp() const

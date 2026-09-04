@@ -29,6 +29,7 @@ public:
     const std::string &getQuery() const;
     const std::string &getVersion() const;
     std::string getHeader(const std::string &key) const;
+    const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getBody() const;
     HttpStatus getStatus() const;
 };

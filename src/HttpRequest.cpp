@@ -60,6 +60,11 @@ std::string HttpRequest::getHeader(const std::string &key) const
     return it->second;
 }
 
+const std::map<std::string, std::string> &HttpRequest::getHeaders() const
+{
+    return _headers;
+}
+
 const std::string &HttpRequest::getBody() const
 {
     return _body;

@@ -1,7 +1,13 @@
 #include "Client.hpp"
 
 Client::Client(int fd, std::size_t serverIndex, int serverPort)
-    : _fd(fd), _readBuffer(""), _writeBuffer(""), _bytesSent(0), _serverIndex(serverIndex), _serverPort(serverPort)
+    : _fd(fd),
+    _readBuffer(""),
+    _writeBuffer(""),
+    _bytesSent(0),
+    _serverIndex(serverIndex),
+    _serverPort(serverPort),
+    _lastActivity(std::time(NULL))
 {
 }
 
@@ -12,6 +18,7 @@ Client::Client(const Client &other)
       _bytesSent(other._bytesSent),
       _serverIndex(other._serverIndex),
       _serverPort(other._serverPort),
+      _lastActivity(other._lastActivity),
       _requestState(other._requestState)
 {
 }
@@ -26,6 +33,7 @@ Client &Client::operator=(const Client &other)
         _bytesSent = other._bytesSent;
         _serverIndex = other._serverIndex;
         _serverPort = other._serverPort;
+        _lastActivity = other._lastActivity;
         _requestState = other._requestState;
     }
     return *this;
@@ -78,6 +86,7 @@ const RequestState &Client::getRequestState() const
 void Client::resetRequestState()
 {
     _requestState.reset();
+    updateLastActivity();
 }
 
 void Client::clearWriteBuffer()
@@ -101,15 +110,28 @@ void Client::consumeReadBuffer(std::size_t count)
 void Client::appendToReadBuffer(const char *data, std::size_t length)
 {
     _readBuffer.append(data, length);
+    updateLastActivity();
 }
 
 void Client::setWriteBuffer(const std::string &data)
 {
     _writeBuffer = data;
     _bytesSent = 0;
+    updateLastActivity();
 }
 
 void Client::addBytesSent(std::size_t amount)
 {
     _bytesSent += amount;
+    updateLastActivity();
+}
+
+std::time_t Client::getLastActivity() const
+{
+    return _lastActivity;
+}
+
+void Client::updateLastActivity()
+{
+    _lastActivity = std::time(NULL);
 }

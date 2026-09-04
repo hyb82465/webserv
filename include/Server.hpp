@@ -52,6 +52,7 @@ private:
     std::string buildCgiResponse(const std::string& output, bool keepAlive) const;
 
     void checkCgiTimeouts();
+    void checkClientTimeouts();
 
 public:
     Server(const std::vector<ServerConfig>& _configs);

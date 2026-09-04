@@ -18,6 +18,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+#include <ctime>
 
 Server::Server(const std::vector<ServerConfig> &configs)
     : _configs(configs)
@@ -601,6 +602,7 @@ void Server::finishCgi(CgiHandler *cgi)
     }
     removeCgi(cgi);
 }
+
 void Server::removePollFd(int fd)
 {
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
@@ -791,6 +793,38 @@ void Server::checkCgiTimeouts()
     }
 }
 
+void Server::checkClientTimeouts()
+{
+    const int CLIENT_IDLE_TIMEOUT = 30;
+    std::time_t now = std::time(NULL);
+    if (now == static_cast<std::time_t>(-1))
+        return;
+    for (std::size_t i = 0; i < _pollFds.size();)
+    {
+        int fd = _pollFds[i].fd;
+        std::map<int, Client>::iterator client = _clients.find(fd);
+        if (client == _clients.end())
+        {
+            ++i;
+            continue;
+        }
+        if (_pollFds[i].events == 0)
+        {
+            ++i;
+            continue;
+        }
+        std::time_t lastActivity = client->second.getLastActivity();
+        if (lastActivity != static_cast<std::time_t>(-1)
+            && now - lastActivity >= CLIENT_IDLE_TIMEOUT)
+        {
+            std::cout << "client timeout, fd = " << fd << std::endl;
+            removeClient(fd, i);
+            continue;
+        }
+        ++i;
+    }
+}
+
 void Server::run()
 {
     for (std::size_t i = 0; i < _configs.size(); ++i)
@@ -821,8 +855,9 @@ void Server::run()
     {
         // poll
         // int poll(struct pollfd *fds, nfds_t nfds, int timeout);
-        checkCgiTimeouts();
         checkCgiChildren();
+        checkCgiTimeouts();
+        checkClientTimeouts();
         int readyCount = poll(&_pollFds[0], _pollFds.size(), 100);
         if (readyCount == -1)
         {
@@ -830,12 +865,8 @@ void Server::run()
                 break;
             throw std::runtime_error("poll failed");
         }
-
-        checkCgiTimeouts();
-
         if (readyCount == 0)
             continue;
-
         for (std::size_t i = 0; i < _pollFds.size();)
         {
             if (_pollFds[i].revents == 0)

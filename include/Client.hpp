@@ -4,6 +4,7 @@
 #include "RequestState.hpp"
 #include <string>
 #include <cstddef>
+#include <ctime>
 
 class Client
 {
@@ -16,6 +17,7 @@ private:
     std::size_t _bytesSent;
     std::size_t _serverIndex;
     int _serverPort;
+    std::time_t _lastActivity;
 
     RequestState _requestState;
 
@@ -42,6 +44,9 @@ public:
     void appendToReadBuffer(const char *data, std::size_t length);
     void setWriteBuffer(const std::string &data);
     void addBytesSent(std::size_t amount);
+
+    std::time_t getLastActivity() const;
+    void updateLastActivity();
 };
 
 #endif

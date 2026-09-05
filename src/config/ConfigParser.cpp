@@ -1,30 +1,79 @@
+#include "ServerConfig.hpp"
 #include "ConfigParser.hpp"
 #include "Tokenizer.hpp"
 #include "TokenStream.hpp"
 #include "LocationConfig.hpp"
-#include "Utils.hpp"
-
 #include <fstream>
-#include <stdexcept>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <cstdlib>
+#include <cstddef>
+#include <stdexcept>
+#include <limits>
 
-ConfigParser::ConfigParser() {}
-ConfigParser::~ConfigParser() {}
+ConfigParser::ConfigParser()
+{}
+
+ConfigParser::~ConfigParser()
+{}
+
+std::size_t ConfigParser::parseBodySizeValue(TokenStream &tokens)
+{
+    std::string value = tokens.consume();
+    tokens.expect(";");
+    if (value.empty())
+        throw std::runtime_error("client_max_body_size cannot be empty");
+    std::size_t result = 0;
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        if (value[i] < '0' || value[i] > '9')
+            throw std::runtime_error("Invalid client_max_body_size: " + value);
+        std::size_t digit = static_cast<std::size_t>(value[i] - '0');
+        if (result > (std::numeric_limits<std::size_t>::max() - digit) / 10)
+            throw std::out_of_range("client_max_body_size is too large");
+        result = result * 10 + digit;
+    }
+    return result;
+}
+
+ServerConfig ConfigParser::parseServer(TokenStream& tokens)
+{
+    ServerConfig config;
+
+    tokens.expect("server");
+    tokens.expect("{");
+
+    while (tokens.hasNext() && tokens.peek() != "}")
+    {
+        std::string token = tokens.peek();
+        if (tokens.match("listen"))
+            parseListen(tokens, config);
+        else if (tokens.match("root"))
+            parseRoot(tokens, config);
+        else if (tokens.match("index"))
+            parseIndex(tokens, config);
+        else if (tokens.match("client_max_body_size"))
+            parseServerClientMaxBodySize(tokens, config);
+        else if (tokens.match("error_page"))
+            parseErrorPage(tokens, config);
+        else if (tokens.match("location"))
+            config.addLocation(parseLocation(tokens));
+        else
+            throw std::runtime_error("Unexpected token: " + token);
+    }
+    tokens.expect("}");
+    // apply server config to location when location no cofig.
+    config.applyDefaultsToLocations();
+    return config;
+}
 
 ListenConfig ConfigParser::parseListenValue(const std::string& value)
 {
     ListenConfig listen;
-
     size_t colon = value.find(':');
-
     if (colon == std::string::npos)
-    {
-        // printf("debug 1\n");
         throw std::runtime_error("Invalid listen address");
-    }
 
     std::string host = value.substr(0, colon);
     std::string portStr = value.substr(colon + 1);
@@ -42,13 +91,11 @@ ListenConfig ConfigParser::parseListenValue(const std::string& value)
     listen.setPort(static_cast<int>(portValue));
     return listen;
 }
+
 void ConfigParser::parseListen(TokenStream& tokens, ServerConfig& config)
 {
     std::string port = tokens.consume();
-
     tokens.expect(";");
-    // printf("debug 1\n");
-
     ListenConfig listen = parseListenValue(port);
     config.addListen(listen);
 }
@@ -64,18 +111,7 @@ void ConfigParser::parseIndex(TokenStream& tokens, ServerConfig& config)
     config.setIndex(tokens.consume());
     tokens.expect(";");
 }
-void ConfigParser::parseClientMaxBodySize(TokenStream& tokens, ServerConfig& config)
-{
-    std::string size = tokens.consume();
-    tokens.expect(";");
-    char* endPtr;
-    long sizeValue = std::strtol(size.c_str(), &endPtr, 10);
-    if (*endPtr != '\0')
-        throw std::runtime_error("Invalid Value: " + size);
-    if (sizeValue < 0)
-        throw std::out_of_range("Client Max Body Size Value cannot be negative.");
-    config.setClientMaxBodySize(static_cast<size_t>(sizeValue));
-}
+
 void ConfigParser::parseErrorPage(TokenStream& tokens, ServerConfig& config)
 {
     std::string num = tokens.consume();
@@ -92,83 +128,65 @@ void ConfigParser::parseErrorPage(TokenStream& tokens, ServerConfig& config)
     config.addErrorPage(static_cast<int>(numValue), path);
 }
 
-ServerConfig ConfigParser::parseServer(TokenStream& tokens)
+void ConfigParser::parseServerClientMaxBodySize(
+    TokenStream& tokens,
+    ServerConfig& config)
 {
-    ServerConfig config;
+    config.setClientMaxBodySize(parseBodySizeValue(tokens));
+}
 
-    tokens.expect("server");
+LocationConfig ConfigParser::parseLocation(TokenStream& tokens)
+{
+    LocationConfig location;
+
+    location.setPath(tokens.consume());
     tokens.expect("{");
 
     while (tokens.hasNext() && tokens.peek() != "}")
     {
-        std::string token = tokens.peek();
-        if (tokens.match("listen"))
-        {
-            // printf("debug1\n"); 
-            parseListen(tokens, config);
-            // printf("debug 1\n");
-        }
-
+        if (tokens.match("methods"))
+            parseMethods(tokens, location);
         else if (tokens.match("root"))
-        {
-            // printf("debug2\n"); 
-            parseRoot(tokens, config);
-        }
-        else if (tokens.match("index"))
-        {
-            parseIndex(tokens, config);
-            // printf("debug3\n");
-
-        }
+            parseLocationRoot(tokens, location);
         else if (tokens.match("client_max_body_size"))
-        {
-            parseClientMaxBodySize(tokens, config);
-            // printf("debug4\n");
-        }
-        else if (tokens.match("error_page"))
-        {
-            parseErrorPage(tokens, config);
-            // printf("debug5\n");
-        }
-        else if (tokens.peek() == "location")
-        {
-
-            config.addLocation(parseLocation(tokens));
-        }
+            parseLocationClientMaxBodySize(tokens, location);
+        else if (tokens.match("autoindex"))
+            parseAutoindex(tokens, location);
+        else if (tokens.match("index"))
+            parseLocationIndex(tokens, location);
+        else if (tokens.match("upload_store"))
+            parseUploadStore(tokens, location);
+        else if (tokens.match("return"))
+            parseRedirect(tokens, location);
+        else if (tokens.match("cgi"))
+            parseCgi(tokens, location);
         else
-            throw std::runtime_error("Unexpected token: " + token);
+            throw std::runtime_error("Unexpected token in location block: " + tokens.peek());
     }
     tokens.expect("}");
-    // apply server config to location when location no cofig.
-    config.applyDefaultsToLocations();
-    return config;
+    return location;
 }
+
 void ConfigParser::parseLocationRoot(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
-    location.setRoot(tokens.peek());
-    tokens.consume();
+    location.setRoot(tokens.consume());
     tokens.expect(";");
-    // printf("debug6\n");
-
 }
+
 void ConfigParser::parseMethods(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
     while (tokens.hasNext() && tokens.peek() != ";")
     {
-        std::string method = tokens.peek();
-        // printf("debug7: %s\n", method.c_str());
+        std::string method = tokens.consume();
         if (method != "GET" && method != "POST" && method != "DELETE")
             throw std::runtime_error("Invalid HTTP method: " + method);
         location.addMethod(method);
-        tokens.consume();
     }
     tokens.expect(";");
 }
+
 void ConfigParser::parseAutoindex(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
     std::string autoindexValue = tokens.consume();
     tokens.expect(";");
     if (autoindexValue == "on")
@@ -176,21 +194,17 @@ void ConfigParser::parseAutoindex(TokenStream& tokens, LocationConfig& location)
     else if (autoindexValue == "off")
         location.setAutoindex(false);
     else
-    {
         throw std::runtime_error("Invalid autoindex value: " + autoindexValue);
-    }
 }
+
 void ConfigParser::parseUploadStore(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
     location.setUploadStore(tokens.consume());
     tokens.expect(";");
 }
 
 void ConfigParser::parseRedirect(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
-
     char* endPtr;
     std::string strcode = tokens.consume();
     std::string url = tokens.consume();
@@ -214,14 +228,12 @@ void ConfigParser::parseRedirect(TokenStream& tokens, LocationConfig& location)
 
 void ConfigParser::parseLocationIndex(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
     location.setIndex(tokens.consume());
     tokens.expect(";");
 }
 
 void ConfigParser::parseCgi(TokenStream& tokens, LocationConfig& location)
 {
-    tokens.consume();
     std::string extension = tokens.consume();
     std::string executable = tokens.consume();
     tokens.expect(";");
@@ -231,60 +243,16 @@ void ConfigParser::parseCgi(TokenStream& tokens, LocationConfig& location)
         throw std::runtime_error("CGI executable cannot be empty");
     if (extension[0] != '.')
         throw std::runtime_error("CGI extension must start with '.':" + extension);
-
     location.addCgi(extension, executable);
 }
-LocationConfig ConfigParser::parseLocation(TokenStream& tokens)
+
+void ConfigParser::parseLocationClientMaxBodySize(
+    TokenStream &tokens,
+    LocationConfig &location)
 {
-    LocationConfig location;
-
-    tokens.expect("location");
-    location.setPath(tokens.consume());
-    tokens.expect("{");
-
-    while (tokens.hasNext() && tokens.peek() != "}")
-    {
-        std::string token = tokens.peek();
-
-        if (token == "methods")
-        {
-            parseMethods(tokens, location);
-            // printf("debug5: %s\n", location.methods[0].c_str());
-        }
-        else if (token == "root")
-        {
-            parseLocationRoot(tokens, location);
-            // printf("debug6: %s\n", location.root.c_str());
-
-        }
-        else if (token == "autoindex")
-        {
-            parseAutoindex(tokens, location);
-        }
-        else if (token == "index")
-        {
-            parseLocationIndex(tokens, location);
-        }
-        else if (token == "upload_store")
-        {
-            parseUploadStore(tokens, location);
-
-        }
-        else if (token == "return")
-        {
-
-            parseRedirect(tokens, location);
-        }
-        else if (token == "cgi")
-        {
-            parseCgi(tokens, location);
-        }
-        else
-            throw std::runtime_error("Unexpected token in location block: " + token);
-    }
-    tokens.expect("}");
-    return location;
+    location.setClientMaxBodySize(parseBodySizeValue(tokens));
 }
+
 std::vector<ServerConfig> ConfigParser::parse(const std::string& filename)
 {
     std::ifstream file(filename.c_str());
@@ -310,11 +278,9 @@ std::vector<ServerConfig> ConfigParser::parse(const std::string& filename)
 
     std::vector<ServerConfig> servers;
     TokenStream tokenStream(tokens);
-    // printf("debug 2\n");
 
     while (tokenStream.hasNext())
-    {
         servers.push_back(parseServer(tokenStream));
-    }
+
     return servers;
 }

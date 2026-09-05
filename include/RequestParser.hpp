@@ -13,7 +13,6 @@ private:
     HttpStatus parseRequestLine(const std::string &line, HttpRequest &request);
     HttpStatus parseHeaders(const std::string &headers, HttpRequest &request);
 
-    StageResult parseRequestLineStage(const std::string &buffer, RequestState &state);
     StageResult parseHeadersStage(const std::string &buffer, RequestState &state, std::size_t maxBodySize);
     StageResult parseContentBodyStage(const std::string &buffer, RequestState &state);
     StageResult parseChunkSizeStage(const std::string &buffer, RequestState &state, std::size_t maxBodySize);
@@ -24,6 +23,7 @@ public:
     RequestParser();
     ~RequestParser();
 
+    StageResult parseRequestLineStage(const std::string &buffer, RequestState &state);
     ParseResult parse(const std::string &buffer, RequestState &state, std::size_t maxBodySize);
 };
 

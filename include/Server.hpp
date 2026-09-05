@@ -3,11 +3,14 @@
 
 #include "Client.hpp"
 #include "ServerConfig.hpp"
-#include "CgiHandler.hpp"
+#include "HttpResponse.hpp"
+#include "RequestHandler.hpp"
 #include <map>
 #include <vector>
-#include <poll.h>
 #include <string>
+#include <poll.h>
+
+class CgiHandler;
 
 class Server
 {
@@ -31,6 +34,12 @@ private:
     bool setNonBlocking(int fd);
     int setupListenSocket(const ListenConfig& listenConfig);
     void removeClient(int fd, std::size_t i);
+    void queueResponse(Client &client, std::size_t pollIndex, HttpResponse &response);
+    ParseResult parseClientRequest(
+        Client &client,
+        const ServerConfig &config,
+        RequestHandler &handler,
+        const LocationConfig *&location);
     void processRequest(int fd, std::size_t& i);
     void acceptClient(int listenFd);
     void handleRead(int fd, std::size_t& i);

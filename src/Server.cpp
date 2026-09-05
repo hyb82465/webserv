@@ -1,8 +1,9 @@
 #include "Server.hpp"
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
-#include "HttpResponse.hpp"
 #include "RequestHandler.hpp"
+#include "RequestState.hpp"
+#include "CgiHandler.hpp"
 #include "Signal.hpp"
 #include "Utils.hpp"
 #include <sys/socket.h>
@@ -160,6 +161,57 @@ void Server::removeClient(int fd, std::size_t i)
     _pollFds.erase(_pollFds.begin() + i);
 }
 
+void Server::queueResponse(Client &client, std::size_t pollIndex, HttpResponse &response)
+{
+    RequestState &state = client.getRequestState();
+
+    if (state.keepAlive)
+        response.setHeader("Connection", "keep-alive");
+    else
+        response.setHeader("Connection", "close");
+
+    client.setWriteBuffer(response.getResponse());
+    _pollFds[pollIndex].events = POLLOUT;
+}
+
+ParseResult Server::parseClientRequest(
+    Client &client,
+    const ServerConfig &config,
+    RequestHandler &handler,
+    const LocationConfig *&location)
+{
+    RequestState &state = client.getRequestState();
+    HttpRequest &request = state.request;
+    RequestParser parser;
+
+    StageResult lineResult = STAGE_OK;
+
+    if (state.stage == STAGE_REQUEST_LINE)
+    {
+        lineResult = parser.parseRequestLineStage(
+            client.getReadBuffer(),
+            state);
+    }
+
+    if (lineResult == STAGE_INCOMPLETE)
+        return PARSE_INCOMPLETE;
+
+    if (lineResult == STAGE_ERROR)
+        return PARSE_ERROR;
+
+    location = handler.getLocation(request);
+
+    std::size_t maxBodySize = config.getClientMaxBodySize();
+
+    if (location != NULL && location->hasClientMaxBodySize())
+        maxBodySize = location->getClientMaxBodySize();
+
+    return parser.parse(
+        client.getReadBuffer(),
+        state,
+        maxBodySize);
+}
+
 void Server::processRequest(int fd, std::size_t &i)
 {
     std::map<int, Client>::iterator it = _clients.find(fd);
@@ -179,12 +231,15 @@ void Server::processRequest(int fd, std::size_t &i)
     const ServerConfig &config = _configs[serverIndex];
     RequestState &state = it->second.getRequestState();
     HttpRequest &request = state.request;
-    RequestParser parser;
-    std::size_t maxBodySize = config.getClientMaxBodySize();
-    ParseResult result = parser.parse(it->second.getReadBuffer(), state, maxBodySize);
+
+    RequestHandler handler(config);
+
+    const LocationConfig *location = NULL;
+    ParseResult result =
+        parseClientRequest(it->second, config, handler, location);
+
     if (result == PARSE_INCOMPLETE)
     {
-        // std::cout << "request incomplete" << std::endl;
         _pollFds[i].events = POLLIN;
         ++i;
         return;
@@ -195,16 +250,11 @@ void Server::processRequest(int fd, std::size_t &i)
                   << request.getStatus()
                   << std::endl;
         state.keepAlive = false;
-        RequestHandler handler(config);
         HttpResponse response = handler.handleError(request.getStatus());
-        response.setHeader("Connection", "close");
-        it->second.setWriteBuffer(response.getResponse());
-        _pollFds[i].events = POLLOUT;
+        queueResponse(it->second, i, response);
         ++i;
         return;
     }
-    RequestHandler handler(config);
-    const LocationConfig *location = handler.getLocation(request);
     HttpResponse response;
     if (request.getMethod() != "GET" && request.getMethod() != "POST" && request.getMethod() != "DELETE")
     {
@@ -212,12 +262,7 @@ void Server::processRequest(int fd, std::size_t &i)
     }
     if (handler.preCheck(request, location, response))
     {
-        if (state.keepAlive)
-            response.setHeader("Connection", "keep-alive");
-        else
-            response.setHeader("Connection", "close");
-        it->second.setWriteBuffer(response.getResponse());
-        _pollFds[i].events = POLLOUT;
+        queueResponse(it->second, i, response);
         ++i;
         return;
     }
@@ -231,9 +276,7 @@ void Server::processRequest(int fd, std::size_t &i)
             {
                 state.keepAlive = false;
                 response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
-                response.setHeader("Connection", "close");
-                it->second.setWriteBuffer(response.getResponse());
-                _pollFds[i].events = POLLOUT;
+                queueResponse(it->second, i, response);
                 ++i;
                 return;
             }
@@ -256,12 +299,7 @@ void Server::processRequest(int fd, std::size_t &i)
         }
     }
     response = handler.handleResolved(request);
-    if (state.keepAlive)
-        response.setHeader("Connection", "keep-alive");
-    else
-        response.setHeader("Connection", "close");
-    it->second.setWriteBuffer(response.getResponse());
-    _pollFds[i].events = POLLOUT;
+    queueResponse(it->second, i, response);
     ++i;
 }
 

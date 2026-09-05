@@ -1,32 +1,35 @@
 #include "LocationConfig.hpp"
 
 LocationConfig::LocationConfig()
-: path(""), 
-    root(""), 
-    methods(),
-    autoindex(false), 
-    upload_store(""), 
-    redirectCode(0), 
-    redirectUrl(""), 
-    index(""), 
-    cgi() 
-{
-    
-}
-LocationConfig::~LocationConfig(){}
-LocationConfig::LocationConfig(const LocationConfig &other)
-:path(other.path),
- root(other.root),
- methods(other.methods),
- autoindex(other.autoindex),
- upload_store(other.upload_store),
- redirectCode(other.redirectCode),
- redirectUrl(other.redirectUrl),
- index(other.index),
- cgi(other.cgi)
-{
+    : path(""),
+      root(""),
+      methods(),
+      autoindex(false),
+      upload_store(""),
+      redirectCode(0),
+      redirectUrl(""),
+      index(""),
+      cgi(),
+      clientMaxBodySize(0),
+      clientMaxBodySizeSet(false)
+{}
 
-}
+LocationConfig::~LocationConfig(){}
+
+LocationConfig::LocationConfig(const LocationConfig &other)
+    : path(other.path),
+      root(other.root),
+      methods(other.methods),
+      autoindex(other.autoindex),
+      upload_store(other.upload_store),
+      redirectCode(other.redirectCode),
+      redirectUrl(other.redirectUrl),
+      index(other.index),
+      cgi(other.cgi),
+      clientMaxBodySize(other.clientMaxBodySize),
+      clientMaxBodySizeSet(other.clientMaxBodySizeSet)
+{}
+
 LocationConfig &LocationConfig::operator=(const LocationConfig &other)
 {
     if (this != &other)
@@ -40,9 +43,12 @@ LocationConfig &LocationConfig::operator=(const LocationConfig &other)
         redirectUrl = other.redirectUrl;
         index = other.index;
         cgi = other.cgi;
+        clientMaxBodySize = other.clientMaxBodySize;
+        clientMaxBodySizeSet = other.clientMaxBodySizeSet;
     }
     return *this;
 }
+
 const std::string &LocationConfig::getPath() const
 {
     return path;
@@ -53,8 +59,7 @@ const std::string &LocationConfig::getRoot() const
     return root;
 }
 
-const std::vector<std::string> &
-LocationConfig::getMethods() const
+const std::vector<std::string> &LocationConfig::getMethods() const
 {
     return methods;
 }
@@ -84,10 +89,19 @@ const std::string &LocationConfig::getIndex() const
     return index;
 }
 
-const std::map<std::string, std::string> &
-LocationConfig::getCgi() const
+const std::map<std::string, std::string> &LocationConfig::getCgi() const
 {
     return cgi;
+}
+
+std::size_t LocationConfig::getClientMaxBodySize() const
+{
+    return clientMaxBodySize;
+}
+
+bool LocationConfig::hasClientMaxBodySize() const
+{
+    return clientMaxBodySizeSet;
 }
 
 void LocationConfig::setPath(const std::string &path)
@@ -110,8 +124,7 @@ void LocationConfig::setAutoindex(bool autoindex)
     this->autoindex = autoindex;
 }
 
-void LocationConfig::setUploadStore(
-    const std::string &upload_store)
+void LocationConfig::setUploadStore(const std::string &upload_store)
 {
     this->upload_store = upload_store;
 }
@@ -121,21 +134,23 @@ void LocationConfig::setRedirectCode(int code)
     this->redirectCode = code;
 }
 
-void LocationConfig::setRedirectUrl(
-    const std::string &url)
+void LocationConfig::setRedirectUrl(const std::string &url)
 {
     this->redirectUrl = url;
 }
 
-void LocationConfig::addMethod(
-    const std::string &method)
+void LocationConfig::setClientMaxBodySize(std::size_t size)
+{
+    clientMaxBodySize = size;
+    clientMaxBodySizeSet = true;
+}
+
+void LocationConfig::addMethod(const std::string &method)
 {
     this->methods.push_back(method);
 }
 
-void LocationConfig::addCgi(
-    const std::string &extension,
-    const std::string &executable)
+void LocationConfig::addCgi(const std::string &extension, const std::string &executable)
 {
     this->cgi[extension] = executable;
 }

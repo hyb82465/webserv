@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cstddef>
 
 class LocationConfig
 {
@@ -17,6 +18,8 @@ private:
     std::string redirectUrl;
     std::string index;
     std::map<std::string, std::string> cgi;
+    std::size_t clientMaxBodySize;
+    bool clientMaxBodySizeSet;
 public:
     LocationConfig();
     ~LocationConfig();
@@ -32,6 +35,8 @@ public:
     const std::string &getRedirectUrl() const;
     const std::string &getIndex() const;
     const std::map<std::string, std::string> &getCgi() const;
+    std::size_t getClientMaxBodySize() const;
+    bool hasClientMaxBodySize() const;
 
     void setPath(const std::string &path);
     void setRoot(const std::string &root);
@@ -40,6 +45,7 @@ public:
     void setUploadStore(const std::string &upload_store);
     void setRedirectCode(int code);
     void setRedirectUrl(const std::string &url);
+    void setClientMaxBodySize(std::size_t size);
 
     void addMethod(const std::string &method);
     void addCgi(const std::string &extension, const std::string &executable);

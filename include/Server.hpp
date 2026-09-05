@@ -40,6 +40,12 @@ private:
         const ServerConfig &config,
         RequestHandler &handler,
         const LocationConfig *&location);
+    bool tryStartCgi(
+        int clientFd,
+        std::size_t pollIndex,
+        Client &client,
+        const LocationConfig *location,
+        RequestHandler &handler);
     void processRequest(int fd, std::size_t& i);
     void acceptClient(int listenFd);
     void handleRead(int fd, std::size_t& i);

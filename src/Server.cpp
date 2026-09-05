@@ -212,6 +212,43 @@ ParseResult Server::parseClientRequest(
         maxBodySize);
 }
 
+bool Server::tryStartCgi(
+    int clientFd,
+    std::size_t pollIndex,
+    Client &client,
+    const LocationConfig *location,
+    RequestHandler &handler)
+{
+    if (location == NULL || location->getCgi().empty())
+        return false;
+    RequestState &state = client.getRequestState();
+    HttpRequest &request = state.request;
+    std::string executable = findCgiExecutable(request.getPath(), *location);
+    if (executable.empty())
+        return false;
+    std::string scriptPath = handler.buildPath(location, request.getPath());
+    if (scriptPath.empty())
+    {
+        state.keepAlive = false;
+        HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+        queueResponse(client, pollIndex, response);
+        return true;
+    }
+    try
+    {
+        startCgi(clientFd, request, scriptPath, executable);
+        _pollFds[pollIndex].events = 0;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "CGI failed: " << e.what() << std::endl;
+        state.keepAlive = false;
+        HttpResponse response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
+        queueResponse(client, pollIndex, response);
+    }
+    return true;
+}
+
 void Server::processRequest(int fd, std::size_t &i)
 {
     std::map<int, Client>::iterator it = _clients.find(fd);
@@ -231,13 +268,9 @@ void Server::processRequest(int fd, std::size_t &i)
     const ServerConfig &config = _configs[serverIndex];
     RequestState &state = it->second.getRequestState();
     HttpRequest &request = state.request;
-
     RequestHandler handler(config);
-
     const LocationConfig *location = NULL;
-    ParseResult result =
-        parseClientRequest(it->second, config, handler, location);
-
+    ParseResult result = parseClientRequest(it->second, config, handler, location);
     if (result == PARSE_INCOMPLETE)
     {
         _pollFds[i].events = POLLIN;
@@ -268,32 +301,8 @@ void Server::processRequest(int fd, std::size_t &i)
     }
     if (location != NULL && !location->getCgi().empty())
     {
-        std::string executable = findCgiExecutable(request.getPath(), *location);
-        if (!executable.empty())
+        if (tryStartCgi(fd, i, it->second, location, handler))
         {
-            std::string scriptPath = handler.buildPath(location, request.getPath());
-            if (scriptPath.empty())
-            {
-                state.keepAlive = false;
-                response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
-                queueResponse(it->second, i, response);
-                ++i;
-                return;
-            }
-            try
-            {
-                startCgi(fd, request, scriptPath, executable);
-                _pollFds[i].events = 0;
-            }
-            catch (const std::exception &e)
-            {
-                std::cerr << "CGI failed: " << e.what() << std::endl;
-                state.keepAlive = false;
-                response = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
-                response.setHeader("Connection", "close");
-                it->second.setWriteBuffer(response.getResponse());
-                _pollFds[i].events = POLLOUT;
-            }
             ++i;
             return;
         }

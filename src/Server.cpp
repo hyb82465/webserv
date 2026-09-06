@@ -854,6 +854,25 @@ void Server::checkClientTimeouts()
 
 void Server::run()
 {
+    std::map<std::string, bool> usedListen;
+
+    for (std::size_t i = 0; i < _configs.size(); ++i)
+    {
+        const std::vector<ListenConfig>& listens = _configs[i].getListens();
+
+        for (std::size_t j = 0; j < listens.size(); ++j)
+        {
+            std::stringstream key;
+            key << listens[j].getHost()
+                 << ":"
+                 << listens[j].getPort();
+
+            if (usedListen.find(key.str()) != usedListen.end())
+                throw std::runtime_error("Duplicate listen: " + key.str());
+
+            usedListen[key.str()] = true;
+        }
+    }
     for (std::size_t i = 0; i < _configs.size(); ++i)
     {
         const std::vector<ListenConfig> &listens =

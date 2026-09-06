@@ -373,6 +373,28 @@ void Server::acceptClient(int listenFd)
     std::size_t serverIndex = serverIt->second;
     int serverPort = portIt->second;
 
+    struct sockaddr_in serverAddr;
+    socklen_t serverAddrLen = sizeof(serverAddr);
+
+    std::memset(&serverAddr, 0, sizeof(serverAddr));
+
+    if (getsockname(listenFd, reinterpret_cast<struct sockaddr *>(&serverAddr), &serverAddrLen) == -1)
+    {
+        std::cerr << "getsockname failed" << std::endl;
+        close(clientFd);
+        return;
+    }
+
+    unsigned long serverIp = ntohl(serverAddr.sin_addr.s_addr);
+
+    std::ostringstream serverIpStream;
+    serverIpStream << ((serverIp >> 24) & 0xFF) << "."
+                << ((serverIp >> 16) & 0xFF) << "."
+                << ((serverIp >> 8) & 0xFF) << "."
+                << (serverIp & 0xFF);
+
+    std::string serverName = serverIpStream.str();
+
     struct pollfd clientPollFd;
     clientPollFd.fd = clientFd;
     clientPollFd.events = POLLIN;
@@ -380,7 +402,7 @@ void Server::acceptClient(int listenFd)
 
     _pollFds.push_back(clientPollFd);
 
-    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort, remoteAddr)));
+    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort, remoteAddr, serverName)));
     std::cout << "client connected, fd = "
               << clientFd
               << ", port = "
@@ -493,7 +515,8 @@ void Server::startCgi(int clientFd, const HttpRequest &request,
         throw std::runtime_error("CGI: client not found");
     int serverPort = clientIt->second.getServerPort();
     const std::string &remoteAddr = clientIt->second.getRemoteAddr();
-    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort, remoteAddr);
+    const std::string &serverName = clientIt->second.getServerName();
+    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort, remoteAddr, serverName);
     try
     {
         cgi->start(request);

@@ -15,13 +15,14 @@ CgiHandler::CgiHandler(
     const std::string &executable,
     const std::string &scriptPath,
     int serverPort,
-    const std::string &remoteAddr)
+    const std::string &remoteAddr,
+    const std::string &serverName)
     : _clientFd(clientFd), _pid(-1),
       _stdinFd(-1), _stdoutFd(-1),
       _stdinOpen(false), _stdoutOpen(false),
       _executable(executable), _scriptPath(scriptPath),
-      _serverPort(serverPort),
-      _remoteAddr(remoteAddr),
+      _serverPort(serverPort), 
+      _remoteAddr(remoteAddr),_serverName(serverName),
       _requestBody(""),
       _bodyOffset(0),
       _output(""),
@@ -279,7 +280,7 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("CONTENT_LENGTH=" + contentLength.str());
 
     // server and client information
-    _environment.push_back("SERVER_NAME=localhost");
+    _environment.push_back("SERVER_NAME= " + _serverName);
     _environment.push_back("SERVER_PORT=" + serverPort.str());
     _environment.push_back("REMOTE_ADDR= " + _remoteAddr);
 

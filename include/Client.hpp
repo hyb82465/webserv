@@ -18,12 +18,13 @@ private:
     std::size_t _serverIndex;
     int _serverPort;
     std::string _remoteAddr;
+    std::string _serverName;
     std::time_t _lastActivity;
 
     RequestState _requestState;
 
 public:
-    Client(int fd, std::size_t serverIndex, int serverPort, const std::string &remoteAddr);
+    Client(int fd, std::size_t serverIndex, int serverPort, const std::string &remoteAddr,const std::string &serverName);
     Client(const Client &other);
     Client &operator=(const Client &other);
     ~Client();
@@ -35,7 +36,7 @@ public:
     std::size_t getServerIndex() const;
     int getServerPort() const;
     const std::string &getRemoteAddr() const;
-
+    const std::string &getServerName() const;
     RequestState &getRequestState();
     const RequestState &getRequestState() const;
     void resetRequestState();

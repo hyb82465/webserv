@@ -27,7 +27,7 @@ private:
 
     //std::string _serverName;
     int  _serverPort;
-    //std::string _remoteAddr;
+    std::string _remoteAddr;
 
     std::string _requestBody;
     std::size_t _bodyOffset; // how many bytes wroten in CGI
@@ -55,7 +55,7 @@ private:
 
 public:
     CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath,
-                int serverPort);
+                int serverPort, const std::string &remoteAddr);
     ~CgiHandler();
 
     void start(const HttpRequest &request);

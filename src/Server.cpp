@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <ctime>
+#include <netinet/in.h>
 
 Server::Server(const std::vector<ServerConfig> &configs)
     : _configs(configs)
@@ -491,7 +492,8 @@ void Server::startCgi(int clientFd, const HttpRequest &request,
     if (clientIt == _clients.end())
         throw std::runtime_error("CGI: client not found");
     int serverPort = clientIt->second.getServerPort();
-    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort);
+    const std::string &remoteAddr = clientIt->second.getRemoteAddr();
+    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort, remoteAddr);
     try
     {
         cgi->start(request);

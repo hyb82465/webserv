@@ -1,14 +1,15 @@
 #include "Client.hpp"
 
-Client::Client(int fd, std::size_t serverIndex, int serverPort)
+Client::Client(int fd, std::size_t serverIndex, int serverPort, const std::string &remoteAddr)
     : _fd(fd),
     _readBuffer(""),
     _writeBuffer(""),
     _bytesSent(0),
     _serverIndex(serverIndex),
     _serverPort(serverPort),
+    _remoteAddr(remoteAddr),
     _lastActivity(std::time(NULL))
-{
+{   
 }
 
 Client::Client(const Client &other)
@@ -18,6 +19,7 @@ Client::Client(const Client &other)
       _bytesSent(other._bytesSent),
       _serverIndex(other._serverIndex),
       _serverPort(other._serverPort),
+      _remoteAddr(other._remoteAddr),
       _lastActivity(other._lastActivity),
       _requestState(other._requestState)
 {
@@ -33,6 +35,7 @@ Client &Client::operator=(const Client &other)
         _bytesSent = other._bytesSent;
         _serverIndex = other._serverIndex;
         _serverPort = other._serverPort;
+        _remoteAddr = other._remoteAddr;
         _lastActivity = other._lastActivity;
         _requestState = other._requestState;
     }
@@ -71,6 +74,11 @@ std::size_t Client::getServerIndex() const
 int Client::getServerPort() const
 {
     return _serverPort;
+}
+
+const std::string &Client::getRemoteAddr() const
+{
+    return _remoteAddr;
 }
 
 RequestState &Client::getRequestState()

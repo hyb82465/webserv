@@ -17,12 +17,13 @@ private:
     std::size_t _bytesSent;
     std::size_t _serverIndex;
     int _serverPort;
+    std::string _remoteAddr;
     std::time_t _lastActivity;
 
     RequestState _requestState;
 
 public:
-    Client(int fd, std::size_t serverIndex, int serverPort);
+    Client(int fd, std::size_t serverIndex, int serverPort, const std::string &remoteAddr);
     Client(const Client &other);
     Client &operator=(const Client &other);
     ~Client();
@@ -33,6 +34,7 @@ public:
     std::size_t getBytesSent() const;
     std::size_t getServerIndex() const;
     int getServerPort() const;
+    const std::string &getRemoteAddr() const;
 
     RequestState &getRequestState();
     const RequestState &getRequestState() const;

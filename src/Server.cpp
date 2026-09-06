@@ -326,13 +326,27 @@ void Server::acceptClient(int listenFd)
     //     reinterpret_cast<struct sockaddr *>(&clientAddr),
     //     &clientAddrLen
     // );
-    int clientFd = accept(listenFd, NULL, NULL);
+    // int clientFd = accept(listenFd, NULL, NULL);
+    struct sockaddr_in clientAddr;
+    socklen_t clientAddrLen = sizeof(clientAddr);
+
+    std::memset(&clientAddr, 0, sizeof(clientAddr));
+
+    int clientFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientAddrLen);
     if (clientFd == -1)
     {
         std::cerr << "accept failed" << std::endl;
         return;
     }
+    unsigned long ip = ntohl(clientAddr.sin_addr.s_addr);
 
+    std::ostringstream oss;
+    oss << ((ip >> 24) & 0xFF) << "."
+        << ((ip >> 16) & 0xFF) << "."
+        << ((ip >> 8) & 0xFF) << "."
+        << (ip & 0xFF);
+
+    std::string remoteAddr = oss.str();
     // non-blocking
     if (!setNonBlocking(clientFd))
     {
@@ -365,7 +379,7 @@ void Server::acceptClient(int listenFd)
 
     _pollFds.push_back(clientPollFd);
 
-    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort)));
+    _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort, remoteAddr)));
     std::cout << "client connected, fd = "
               << clientFd
               << ", port = "

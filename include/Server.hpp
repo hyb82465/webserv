@@ -62,6 +62,7 @@ private:
     void removePollFd(int fd);
     void addCgiPollFds(CgiHandler* cgi);
     void checkCgiChildren();
+    void removeCgiByClientFd(int clientFd);
 
     std::string findCgiExecutable(const std::string& path, const LocationConfig& location) const;
     std::string buildCgiResponse(const std::string& output, bool keepAlive) const;

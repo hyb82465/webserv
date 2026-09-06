@@ -157,6 +157,7 @@ int Server::setupListenSocket(const ListenConfig &listenConfig)
 
 void Server::removeClient(int fd, std::size_t i)
 {
+    removeCgiByClientFd(fd);
     close(fd);
     _clients.erase(fd);
     _pollFds.erase(_pollFds.begin() + i);
@@ -689,6 +690,23 @@ void Server::removePollFd(int fd)
             _pollFds.erase(_pollFds.begin() + i);
             return;
         }
+    }
+}
+
+void Server::removeCgiByClientFd(int clientFd)
+{
+    for (std::size_t i = 0; i < _cgiHandlers.size();)
+    {
+        CgiHandler *cgi = _cgiHandlers[i];
+
+        if (cgi->getClientFd() == clientFd)
+        {
+            cgi->killChild();
+            removeCgi(cgi);
+            continue;
+        }
+
+        ++i;
     }
 }
 

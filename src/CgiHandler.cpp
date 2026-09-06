@@ -34,18 +34,19 @@ CgiHandler::CgiHandler(
 
 CgiHandler::~CgiHandler()
 {
-    if (_stdinFd != -1)
-        close(_stdinFd);
-    if (_stdoutFd != -1)
-        close(_stdoutFd);
-    if (_pid > 0)
-    {
-        kill(_pid, SIGKILL);
-        int status;
+    // if (_stdinFd != -1)
+    //     close(_stdinFd);
+    // if (_stdoutFd != -1)
+    //     close(_stdoutFd);
+    // if (_pid > 0)
+    // {
+    //     kill(_pid, SIGKILL);
+    //     int status;
 
-        waitpid(_pid, &status, 0);
-        _pid = -1;
-    }
+    //     waitpid(_pid, &status, 0);
+    //     _pid = -1;
+    // }
+    killChild();
 }
 
 void CgiHandler::start(const HttpRequest &request)
@@ -402,8 +403,8 @@ void CgiHandler::killChild()
         _pid = -1;
     }
 
-    // closeInput();
-    // closeOutput();
+    closeInput();
+    closeOutput();
 }
 
 bool CgiHandler::isChildSuccess() const

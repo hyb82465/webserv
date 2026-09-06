@@ -228,6 +228,17 @@ bool Server::tryStartCgi(
     if (executable.empty())
         return false;
     std::string scriptPath = handler.buildPath(location, request.getPath());
+    
+    std::cout << "=== CGI DEBUG ===" << std::endl;
+    std::cout << "method     = [" << request.getMethod() << "]" << std::endl;
+    std::cout << "path       = [" << request.getPath() << "]" << std::endl;
+    std::cout << "executable = [" << executable << "]" << std::endl;
+    std::cout << "scriptPath = [" << scriptPath << "]" << std::endl;
+    std::cout << "serverName = [" << client.getServerName() << "]" << std::endl;
+    std::cout << "serverPort = [" << client.getServerPort() << "]" << std::endl;
+    std::cout << "remoteAddr = [" << client.getRemoteAddr() << "]" << std::endl;
+    std::cout << "=================" << std::endl;
+    
     if (scriptPath.empty())
     {
         state.keepAlive = false;

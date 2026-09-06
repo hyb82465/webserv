@@ -280,9 +280,9 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     _environment.push_back("CONTENT_LENGTH=" + contentLength.str());
 
     // server and client information
-    _environment.push_back("SERVER_NAME= " + _serverName);
+    _environment.push_back("SERVER_NAME=" + _serverName);
     _environment.push_back("SERVER_PORT=" + serverPort.str());
-    _environment.push_back("REMOTE_ADDR= " + _remoteAddr);
+    _environment.push_back("REMOTE_ADDR=" + _remoteAddr);
 
     const std::map<std::string, std::string> &headers = request.getHeaders();
     for (std::map<std::string, std::string>::const_iterator it = headers.begin();

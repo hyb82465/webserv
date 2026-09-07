@@ -32,6 +32,7 @@ public:
     const std::map<std::string, std::string> &getHeaders() const;
     const std::string &getBody() const;
     HttpStatus getStatus() const;
+    void swapBody(std::string &body);
 };
 
 #endif

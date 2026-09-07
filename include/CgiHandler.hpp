@@ -39,7 +39,7 @@ private:
     int _exitStatus;
     bool _childFinished;
 
-    std::time_t _startTime;
+    std::time_t _lastActivity;
 
     CgiHandler(const CgiHandler &other);
     CgiHandler &operator=(const CgiHandler &other);
@@ -58,7 +58,7 @@ public:
                 int serverPort, const std::string &remoteAddr, const std::string &serverName);
     ~CgiHandler();
 
-    void start(const HttpRequest &request);
+    void start(HttpRequest &request);
 
     bool writeBody();
 

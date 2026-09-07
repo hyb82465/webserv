@@ -74,3 +74,8 @@ HttpStatus HttpRequest::getStatus() const
 {
     return _status;
 }
+
+void HttpRequest::swapBody(std::string &body)
+{
+    _body.swap(body);
+}

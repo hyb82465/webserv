@@ -50,6 +50,8 @@ public:
 
     std::time_t getLastActivity() const;
     void updateLastActivity();
+
+    void swapWriteBuffer(std::string &data);
 };
 
 #endif

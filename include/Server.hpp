@@ -51,8 +51,10 @@ private:
     void handleRead(int fd, std::size_t& i);
     void handleWrite(int fd, std::size_t& i);
 
-    void startCgi(int clientFd, const HttpRequest& request,
-        const std::string& scriptPath, const std::string& executable);
+    void startCgi(int clientFd,
+                  HttpRequest& request,
+                  const std::string& scriptPath,
+                  const std::string& executable);
     void handleCgiWrite(int fd, std::size_t& i);
     void handleCgiRead(int fd, std::size_t& i);
     CgiHandler* getCgiByFd(int fd);
@@ -65,7 +67,7 @@ private:
     void removeCgiByClientFd(int clientFd);
 
     std::string findCgiExecutable(const std::string& path, const LocationConfig& location) const;
-    std::string buildCgiResponse(const std::string& output, bool keepAlive) const;
+    void buildCgiResponse(const std::string& output, bool keepAlive, std::string &response) const;
 
     void checkCgiTimeouts();
     void checkClientTimeouts();

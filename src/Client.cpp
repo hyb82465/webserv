@@ -107,7 +107,8 @@ void Client::resetRequestState()
 
 void Client::clearWriteBuffer()
 {
-    _writeBuffer.clear();
+    std::string empty;
+    _writeBuffer.swap(empty);
 }
 
 void Client::resetBytesSent()
@@ -117,10 +118,10 @@ void Client::resetBytesSent()
 
 void Client::consumeReadBuffer(std::size_t count)
 {
-    if (count >= _readBuffer.size())
-        _readBuffer.clear();
-    else
-        _readBuffer.erase(0, count);
+    std::string remaining;
+    if (count < _readBuffer.size())
+        remaining = _readBuffer.substr(count);
+    _readBuffer.swap(remaining);
 }
 
 void Client::appendToReadBuffer(const char *data, std::size_t length)
@@ -150,4 +151,11 @@ std::time_t Client::getLastActivity() const
 void Client::updateLastActivity()
 {
     _lastActivity = std::time(NULL);
+}
+
+void Client::swapWriteBuffer(std::string &data)
+{
+    _writeBuffer.swap(data);
+    _bytesSent = 0;
+    updateLastActivity();
 }

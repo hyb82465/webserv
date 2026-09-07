@@ -29,7 +29,7 @@ CgiHandler::CgiHandler(
       _environment(),
       _exitStatus(-1),
       _childFinished(false),
-      _startTime(0)
+      _lastActivity(0)
 {}
 
 CgiHandler::~CgiHandler()
@@ -47,9 +47,11 @@ CgiHandler::~CgiHandler()
     //     _pid = -1;
     // }
     killChild();
+    closeInput();
+    closeOutput();
 }
 
-void CgiHandler::start(const HttpRequest &request)
+void CgiHandler::start(HttpRequest &request)
 {
     int inputPipe[2];
     int outputPipe[2];
@@ -63,10 +65,10 @@ void CgiHandler::start(const HttpRequest &request)
         throw std::runtime_error("outputpipe pipe failed");
     }
 
-    _requestBody = request.getBody();
-    _bodyOffset = 0; // no data to CGI.
-
     buildEnvironment(request);
+
+    request.swapBody(_requestBody);
+    _bodyOffset = 0; // no data to CGI.
 
     setNonBlocking(inputPipe[1]);  // use to write data to CGI
     setNonBlocking(outputPipe[0]); // to read data from CGI
@@ -109,7 +111,7 @@ void CgiHandler::start(const HttpRequest &request)
         _exit(1);
     }
     // father
-    _startTime = std::time(NULL);
+    _lastActivity = std::time(NULL);
     close(inputPipe[0]);
     close(outputPipe[1]);
 
@@ -133,6 +135,9 @@ bool CgiHandler::writeBody()
     ssize_t bytes = write(_stdinFd, _requestBody.c_str() + _bodyOffset, _requestBody.size() - _bodyOffset);
     if (bytes > 0)
     {
+        std::time_t now = std::time(NULL);
+        if (now != static_cast<std::time_t>(-1))
+            _lastActivity = now;
         _bodyOffset += static_cast<std::size_t>(bytes);
         if (_bodyOffset >= _requestBody.size())
         {
@@ -162,6 +167,9 @@ bool CgiHandler::readOutput()
     ssize_t bytes = read(_stdoutFd, buffer, sizeof(buffer));
     if (bytes > 0)
     {
+        std::time_t now = std::time(NULL);
+        if (now != static_cast<std::time_t>(-1))
+            _lastActivity = now;
         _output.append(buffer, static_cast<std::size_t>(bytes));
         return false;
     }
@@ -185,6 +193,8 @@ void CgiHandler::closeInput()
         _stdinFd = -1;
     }
     _stdinOpen = false;
+    std::string empty;
+    _requestBody.swap(empty);
 }
 
 void CgiHandler::closeOutput()
@@ -376,13 +386,12 @@ bool CgiHandler::hasTimedOut(int timeoutSeconds) const
 {
     if (_pid <= 0)
         return false;
-
+    if (_lastActivity == static_cast<std::time_t>(-1))
+        return false;
     std::time_t now = std::time(NULL);
-
     if (now == static_cast<std::time_t>(-1))
         return false;
-
-    return (now - _startTime) >= timeoutSeconds;
+    return (now - _lastActivity) >= timeoutSeconds;
 }
 
 void CgiHandler::killChild()
@@ -402,9 +411,6 @@ void CgiHandler::killChild()
         _childFinished = true;
         _pid = -1;
     }
-
-    closeInput();
-    closeOutput();
 }
 
 bool CgiHandler::isChildSuccess() const

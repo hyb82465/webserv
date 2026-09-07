@@ -171,8 +171,8 @@ void Server::queueResponse(Client &client, std::size_t pollIndex, HttpResponse &
         response.setHeader("Connection", "keep-alive");
     else
         response.setHeader("Connection", "close");
-
-    client.setWriteBuffer(response.getResponse());
+    std::string responseData = response.getResponse();
+    client.swapWriteBuffer(responseData);
     _pollFds[pollIndex].events = POLLOUT;
 }
 
@@ -301,6 +301,8 @@ void Server::processRequest(int fd, std::size_t &i)
         ++i;
         return;
     }
+    it->second.consumeReadBuffer(state.pos);
+    state.pos = 0;
     HttpResponse response;
     if (request.getMethod() != "GET" && request.getMethod() != "POST" && request.getMethod() != "DELETE")
     {
@@ -503,7 +505,6 @@ void Server::handleWrite(int fd, std::size_t &i)
             removeClient(fd, i);
             return;
         }
-        it->second.consumeReadBuffer(state.pos);
         it->second.clearWriteBuffer();
         it->second.resetBytesSent();
         it->second.resetRequestState();
@@ -519,8 +520,10 @@ void Server::handleWrite(int fd, std::size_t &i)
     ++i;
 }
 
-void Server::startCgi(int clientFd, const HttpRequest &request,
-                      const std::string &scriptPath, const std::string &executable)
+void Server::startCgi(int clientFd,
+                      HttpRequest &request,
+                      const std::string &scriptPath,
+                      const std::string &executable)
 {
     std::map<int, Client>::iterator clientIt = _clients.find(clientFd);
     if (clientIt == _clients.end())
@@ -659,7 +662,7 @@ void Server::finishCgi(CgiHandler *cgi)
     RequestState &state = clientIt->second.getRequestState();
     std::string response;
     if (cgi->isChildSuccess())
-        response = buildCgiResponse(cgi->getOutput(), state.keepAlive);
+        buildCgiResponse(cgi->getOutput(), state.keepAlive, response);
     else
     {
         state.keepAlive = false;
@@ -668,7 +671,7 @@ void Server::finishCgi(CgiHandler *cgi)
         error.setHeader("Connection", "close");
         response = error.getResponse();
     }
-    clientIt->second.setWriteBuffer(response);
+    clientIt->second.swapWriteBuffer(response);
     // Client now waits for POLLOUT.
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
@@ -780,7 +783,7 @@ std::string Server::findCgiExecutable(const std::string &path, const LocationCon
     return it->second;
 }
 
-std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) const
+void Server::buildCgiResponse(const std::string &output, bool keepAlive, std::string &response) const
 {
     std::string::size_type pos = output.find("\r\n\r\n");
     std::size_t separatorLength = 4;
@@ -792,16 +795,14 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
     std::string statusLine = "200 OK";
     std::string normalizedHeaders;
     bool hasContentLength = false;
-    std::string body;
+
+    std::size_t bodyStart = 0;
     if (pos == std::string::npos)
-    {
-        body = output;
         normalizedHeaders = "Content-Type: text/html\r\n";
-    }
     else
     {
         std::string headers = output.substr(0, pos);
-        body = output.substr(pos + separatorLength);
+        bodyStart = pos + separatorLength;
         std::size_t start = 0;
         while (start < headers.size())
         {
@@ -854,20 +855,22 @@ std::string Server::buildCgiResponse(const std::string &output, bool keepAlive) 
             start = end + 1;
         }
     }
-    std::string response;
+    std::size_t bodySize = output.size() - bodyStart;
+    response.clear();
     response += "HTTP/1.1 ";
     response += statusLine;
     response += "\r\n";
     response += normalizedHeaders;
     if (!hasContentLength)
-        response += "Content-Length: " + Utils::sizetToString(body.size()) + "\r\n";
+        response += "Content-Length: "
+                 + Utils::sizetToString(bodySize)
+                 + "\r\n";
     if (keepAlive)
         response += "Connection: keep-alive\r\n";
     else
         response += "Connection: close\r\n";
     response += "\r\n";
-    response += body;
-    return response;
+    response.append(output, bodyStart, bodySize);
 }
 
 void Server::checkCgiTimeouts()

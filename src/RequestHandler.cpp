@@ -483,6 +483,12 @@ bool RequestHandler::isSafeFilename(const std::string &filename)
         return false;
     if (filename.find('\\') != std::string::npos)
         return false;
+    for (std::size_t i = 0; i < filename.size(); ++i)
+    {
+        unsigned char c = static_cast<unsigned char>(filename[i]);
+        if (c < 32 || c == 127)
+            return false;
+    }
     return true;
 }
 

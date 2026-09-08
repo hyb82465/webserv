@@ -1,6 +1,7 @@
 #include "HttpRequest.hpp"
 #include "RequestParser.hpp"
 #include "Utils.hpp"
+#include <limits>
 #include <cctype>
 #include <sstream>
 #include <iomanip>
@@ -259,30 +260,60 @@ StageResult RequestParser::parseChunkSizeStage(
     RequestState &state,
     std::size_t maxBodySize)
 {
+    const std::size_t MAX_CHUNK_SIZE_LINE = 1024;
+    if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
     std::size_t lineEnd = buffer.find("\r\n",state.pos);
     if (lineEnd == std::string::npos)
+    {
+        if (buffer.size() - state.pos > MAX_CHUNK_SIZE_LINE)
+        {
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
+        }
         return STAGE_INCOMPLETE;
+    }   
+    std::size_t lineSize = lineEnd - state.pos + 2;
+    if (lineSize > MAX_CHUNK_SIZE_LINE)
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
     std::string sizeStr = buffer.substr(state.pos, lineEnd - state.pos);
     if (sizeStr.empty())
     {
         state.request._status = HTTP_BAD_REQUEST;
         return STAGE_ERROR;
     }
-    std::size_t chunkSize;
-    std::stringstream ss(sizeStr);
-    if (!(ss >> std::hex >> chunkSize))
+    std::size_t chunkSize = 0;
+    const std::size_t maxSize = std::numeric_limits<std::size_t>::max();
+    for (std::size_t i = 0; i < sizeStr.size(); ++i)
     {
-        state.request._status = HTTP_BAD_REQUEST;
-        return STAGE_ERROR;
+        char c = sizeStr[i];
+        std::size_t digit;
+        if (c >= '0' && c <= '9')
+            digit = static_cast<std::size_t>(c - '0');
+        else if (c >= 'a' && c <= 'f')
+            digit = static_cast<std::size_t>(c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F')
+            digit = static_cast<std::size_t>(c - 'A' + 10);
+        else
+        {
+            state.request._status = HTTP_BAD_REQUEST;
+            return STAGE_ERROR;
+        }
+        if (chunkSize > (maxSize - digit) / 16)
+        {
+            state.request._status = HTTP_PAYLOAD_TOO_LARGE;
+            return STAGE_ERROR;
+        }
+        chunkSize = chunkSize * 16 + digit;
     }
-    std::string extra;
-    if (ss >> extra)
-    {
-        state.request._status = HTTP_BAD_REQUEST;
-        return STAGE_ERROR;
-    }
-    std::size_t nextPos = lineEnd + 2;
 
+    std::size_t nextPos = lineEnd + 2;
     if (chunkSize == 0)
     {
         if (nextPos > buffer.size() || buffer.size() - nextPos < 2)

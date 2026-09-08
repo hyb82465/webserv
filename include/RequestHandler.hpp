@@ -46,9 +46,10 @@ private:
 
     std::string getMimeType(const std::string &path);
     std::string getBoundary(const HttpRequest &request);
-    std::vector<MultipartPart> parseMultipart(
+    bool parseMultipart(
         const std::string &body,
-        const std::string &boundary);
+        const std::string &boundary,
+        std::vector<MultipartPart> &parts);
     bool writeFile(const std::string &path, const std::string &data);
     std::string generateAutoindex(const std::string &path, const std::string &requestPath);
     const LocationConfig *findLocation(const ServerConfig &server, const std::string &requestPath) const;

@@ -187,40 +187,84 @@ std::string RequestHandler::getMimeType(const std::string &path)
 std::string RequestHandler::getBoundary(const HttpRequest &request)
 {
     std::string contentType = request.getHeader("content-type");
-    std::string key = "boundary=";
-    std::size_t pos = contentType.find(key);
-    if (pos == std::string::npos)
-        return "";
-    return contentType.substr(pos + key.size());
+    std::size_t start = 0;
+    bool found = false;
+    std::string boundary;
+    while (start < contentType.size())
+    {
+        std::size_t end = contentType.find(';', start);
+        std::string parameter;
+        if (end == std::string::npos)
+            parameter = contentType.substr(start);
+        else
+            parameter = contentType.substr(start, end - start);
+        parameter = Utils::trim(parameter);
+        std::size_t equal = parameter.find('=');
+        if (equal != std::string::npos)
+        {
+            std::string name = Utils::toLower(Utils::trim(parameter.substr(0, equal)));
+            std::string value = Utils::trim(parameter.substr(equal + 1));
+            if (name == "boundary")
+            {
+                if (found)
+                    return "";
+                found = true;
+                if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"')
+                    value = value.substr(1, value.size() - 2);
+                else if (value.find('"') != std::string::npos)
+                    return "";
+                if (value.empty() || value.size() > 70)
+                    return "";
+                if (value.find('\r') != std::string::npos || value.find('\n') != std::string::npos)
+                    return "";
+                boundary = value;
+            }
+        }
+        if (end == std::string::npos)
+            break;
+        start = end + 1;
+    }
+    return boundary;
 }
 
-std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &body, const std::string &boundary)
+bool RequestHandler::parseMultipart(
+    const std::string &body,
+    const std::string &boundary,
+    std::vector<MultipartPart> &parts)
 {
-    std::vector<MultipartPart> parts;
+    parts.clear();
     std::string delimiter = "--" + boundary;
     std::size_t pos = body.find(delimiter);
     while (pos != std::string::npos)
     {
         pos += delimiter.size();
         if (body.compare(pos, 2, "--") == 0)
-            break;
+        {
+            pos += 2;
+            if (pos == body.size())
+                return true;
+            if (body.compare(pos, 2, "\r\n") == 0
+                && pos + 2 == body.size())
+                return true;
+            return false;
+        }
         if (body.compare(pos, 2, "\r\n") != 0)
-            return parts;
+            return false;
         pos += 2;
         std::size_t next = body.find(delimiter, pos);
         if (next == std::string::npos)
-            return parts;
+            return false;
 
         std::size_t partEnd = next;
         if (partEnd < 2)
-            return parts;
+            return false;
         if (body[partEnd - 2] != '\r' || body[partEnd - 1] != '\n')
-            return parts;
+            return false;
         partEnd -= 2;
         std::string part = body.substr(pos, partEnd - pos);
         std::size_t headerEnd = part.find("\r\n\r\n");
         if (headerEnd == std::string::npos)
-            return parts;
+            return false;
         std::string headerBlock = part.substr(0, headerEnd);
         std::string data = part.substr(headerEnd + 4);
         MultipartPart current;
@@ -236,14 +280,14 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
                 line = headerBlock.substr(startHeader, endHeader - startHeader);
             std::size_t colon = line.find(':');
             if (colon == std::string::npos)
-                return parts;
+                return false;
             std::string key = line.substr(0, colon);
             if (key.empty())
-                return parts;
+                return false;
             for (std::size_t i = 0; i < key.size(); i++)
             {
                 if (key[i] == ' ' || key[i] == '\t')
-                    return parts;
+                    return false;
             }
             key = Utils::toLower(key);
             std::string value = Utils::trim(line.substr(colon + 1));
@@ -255,7 +299,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
         std::map<std::string, std::string>::const_iterator it =
             current.headers.find("content-disposition");
         if (it == current.headers.end())
-            return parts;
+            return false;
 
         std::string disposition = it->second;
         std::string nameKey = "name=\"";
@@ -267,7 +311,7 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
             std::size_t nameStart = namePos + nameKey.size();
             std::size_t nameEnd = disposition.find('"', nameStart);
             if (nameEnd == std::string::npos)
-                return parts;
+                return false;
             current.name = disposition.substr(nameStart, nameEnd - nameStart);
         }
 
@@ -277,13 +321,13 @@ std::vector<MultipartPart> RequestHandler::parseMultipart(const std::string &bod
             std::size_t filenameStart = filenamePos + filenameKey.size();
             std::size_t filenameEnd = disposition.find('"', filenameStart);
             if (filenameEnd == std::string::npos)
-                return parts;
+                return false;
             current.filename = disposition.substr(filenameStart, filenameEnd - filenameStart);
         }
         parts.push_back(current);
         pos = next;
     }
-    return parts;
+    return false;
 }
 
 bool RequestHandler::writeFile(const std::string &path, const std::string &data)
@@ -497,7 +541,14 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
 HttpResponse RequestHandler::handlePost(const HttpRequest &request, const LocationConfig *location)
 {
     std::string contentType = request.getHeader("content-type");
-    if (contentType.find("multipart/form-data") != std::string::npos)
+    std::size_t semicolon = contentType.find(';');
+    std::string mediaType;
+    if (semicolon == std::string::npos)
+        mediaType = contentType;
+    else
+        mediaType = contentType.substr(0, semicolon);
+    mediaType = Utils::toLower(Utils::trim(mediaType));
+    if (mediaType == "multipart/form-data")
     {
         if (location == NULL)
             return forbidden();
@@ -507,7 +558,9 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request, const Locati
         std::string boundary = getBoundary(request);
         if (boundary.empty())
             return badRequest();
-        std::vector<MultipartPart> parts = parseMultipart(request.getBody(), boundary);
+        std::vector<MultipartPart> parts;
+        if (!parseMultipart(request.getBody(), boundary, parts))
+            return badRequest();
         bool created = false;
         for (std::size_t i = 0; i < parts.size(); ++i)
         {

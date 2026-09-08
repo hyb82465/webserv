@@ -83,7 +83,7 @@ public:
     bool hasTimedOut(int timeoutSeconds) const;
     void killChild();
 
-    const std::string &getOutput() const;
+    void swapOutput(std::string &output);
 };
 
 #endif

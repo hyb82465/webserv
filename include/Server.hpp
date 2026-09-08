@@ -67,7 +67,7 @@ private:
     void removeCgiByClientFd(int clientFd);
 
     std::string findCgiExecutable(const std::string& path, const LocationConfig& location) const;
-    void buildCgiResponse(const std::string& output, bool keepAlive, std::string &response) const;
+    void buildCgiResponse(std::string &response, bool keepAlive) const;
 
     void checkCgiTimeouts();
     void checkClientTimeouts();

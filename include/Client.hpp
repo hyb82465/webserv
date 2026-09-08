@@ -45,13 +45,11 @@ public:
     void consumeReadBuffer(std::size_t count);
 
     void appendToReadBuffer(const char *data, std::size_t length);
-    void setWriteBuffer(const std::string &data);
+    void swapWriteBuffer(std::string &data);
     void addBytesSent(std::size_t amount);
 
     std::time_t getLastActivity() const;
     void updateLastActivity();
-
-    void swapWriteBuffer(std::string &data);
 };
 
 #endif

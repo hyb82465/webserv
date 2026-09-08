@@ -662,7 +662,10 @@ void Server::finishCgi(CgiHandler *cgi)
     RequestState &state = clientIt->second.getRequestState();
     std::string response;
     if (cgi->isChildSuccess())
-        buildCgiResponse(cgi->getOutput(), state.keepAlive, response);
+    {
+        cgi->swapOutput(response);
+        buildCgiResponse(response, state.keepAlive);
+    }
     else
     {
         state.keepAlive = false;
@@ -717,30 +720,20 @@ void Server::addCgiPollFds(CgiHandler *cgi)
 {
     if (cgi == NULL)
         return;
-
     if (cgi->getStdinFd() != -1)
     {
         struct pollfd stdinPoll;
-
         stdinPoll.fd = cgi->getStdinFd();
-
         stdinPoll.events = POLLOUT;
-
         stdinPoll.revents = 0;
-
         _pollFds.push_back(stdinPoll);
     }
-
     if (cgi->getStdoutFd() != -1)
     {
         struct pollfd stdoutPoll;
-
         stdoutPoll.fd = cgi->getStdoutFd();
-
         stdoutPoll.events = POLLIN;
-
         stdoutPoll.revents = 0;
-
         _pollFds.push_back(stdoutPoll);
     }
 }
@@ -750,7 +743,6 @@ void Server::checkCgiChildren()
     for (std::size_t i = 0; i < _cgiHandlers.size();)
     {
         CgiHandler *cgi = _cgiHandlers[i];
-
         if (!cgi->isStdoutOpen())
         {
             if (cgi->waitForChild())
@@ -783,13 +775,13 @@ std::string Server::findCgiExecutable(const std::string &path, const LocationCon
     return it->second;
 }
 
-void Server::buildCgiResponse(const std::string &output, bool keepAlive, std::string &response) const
+void Server::buildCgiResponse(std::string &response, bool keepAlive) const
 {
-    std::string::size_type pos = output.find("\r\n\r\n");
+    std::string::size_type pos = response.find("\r\n\r\n");
     std::size_t separatorLength = 4;
     if (pos == std::string::npos)
     {
-        pos = output.find("\n\n");
+        pos = response.find("\n\n");
         separatorLength = 2;
     }
     std::string statusLine = "200 OK";
@@ -801,7 +793,7 @@ void Server::buildCgiResponse(const std::string &output, bool keepAlive, std::st
         normalizedHeaders = "Content-Type: text/html\r\n";
     else
     {
-        std::string headers = output.substr(0, pos);
+        std::string headers = response.substr(0, pos);
         bodyStart = pos + separatorLength;
         std::size_t start = 0;
         while (start < headers.size())
@@ -855,22 +847,23 @@ void Server::buildCgiResponse(const std::string &output, bool keepAlive, std::st
             start = end + 1;
         }
     }
-    std::size_t bodySize = output.size() - bodyStart;
-    response.clear();
-    response += "HTTP/1.1 ";
-    response += statusLine;
-    response += "\r\n";
-    response += normalizedHeaders;
+    std::size_t bodySize = response.size() - bodyStart;
+    std::string httpHeaders;
+    httpHeaders += "HTTP/1.1 ";
+    httpHeaders += statusLine;
+    httpHeaders += "\r\n";
+    httpHeaders += normalizedHeaders;
     if (!hasContentLength)
-        response += "Content-Length: "
-                 + Utils::sizetToString(bodySize)
-                 + "\r\n";
+        httpHeaders += "Content-Length: "
+                    + Utils::sizetToString(bodySize)
+                    + "\r\n";
     if (keepAlive)
-        response += "Connection: keep-alive\r\n";
+        httpHeaders += "Connection: keep-alive\r\n";
     else
-        response += "Connection: close\r\n";
-    response += "\r\n";
-    response.append(output, bodyStart, bodySize);
+        httpHeaders += "Connection: close\r\n";
+    httpHeaders += "\r\n";
+    response.erase(0, bodyStart);
+    response.insert(0, httpHeaders);
 }
 
 void Server::checkCgiTimeouts()

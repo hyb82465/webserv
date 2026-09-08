@@ -235,11 +235,6 @@ bool CgiHandler::isStdoutOpen() const
     return _stdoutOpen;
 }
 
-const std::string &CgiHandler::getOutput() const
-{
-    return _output;
-}
-
 void CgiHandler::setNonBlocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -418,4 +413,9 @@ bool CgiHandler::isChildSuccess() const
     if (!_childFinished)
         return false;
     return WIFEXITED(_exitStatus) && WEXITSTATUS(_exitStatus) == 0;
+}
+
+void CgiHandler::swapOutput(std::string &output)
+{
+    _output.swap(output);
 }

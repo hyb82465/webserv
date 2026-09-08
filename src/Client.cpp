@@ -130,9 +130,9 @@ void Client::appendToReadBuffer(const char *data, std::size_t length)
     updateLastActivity();
 }
 
-void Client::setWriteBuffer(const std::string &data)
+void Client::swapWriteBuffer(std::string &data)
 {
-    _writeBuffer = data;
+    _writeBuffer.swap(data);
     _bytesSent = 0;
     updateLastActivity();
 }
@@ -151,11 +151,4 @@ std::time_t Client::getLastActivity() const
 void Client::updateLastActivity()
 {
     _lastActivity = std::time(NULL);
-}
-
-void Client::swapWriteBuffer(std::string &data)
-{
-    _writeBuffer.swap(data);
-    _bytesSent = 0;
-    updateLastActivity();
 }

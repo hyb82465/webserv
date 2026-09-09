@@ -139,10 +139,13 @@ HttpResponse RequestHandler::autoindexResponse(
     const std::string &path,
     const std::string &requestPath)
 {
+    std::string body = generateAutoindex(path, requestPath);
+    if (body.empty())
+        return internalServerError();
     HttpResponse response;
     response.setStatus(HTTP_OK);
     response.setHeader("Content-Type", "text/html");
-    response.setBody(generateAutoindex(path, requestPath));
+    response.setBody(body);
     return response;
 }
 
@@ -340,6 +343,9 @@ bool RequestHandler::writeFile(const std::string &path, const std::string &data)
     file.write(data.data(), data.size());
     if (!file)
         return false;
+    file.close();
+    if (!file)
+        return false;
     return true;
 }
 
@@ -382,7 +388,8 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
     }
     html << "</body>\n";
     html << "</html>\n";
-    closedir(dir);
+    if (closedir(dir) == -1)
+        return "";
     return html.str();
 }
 

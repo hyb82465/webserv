@@ -287,7 +287,7 @@ bool RequestHandler::parseMultipart(
             std::string key = line.substr(0, colon);
             if (key.empty())
                 return false;
-            for (std::size_t i = 0; i < key.size(); i++)
+            for (std::size_t i = 0; i < key.size(); ++i)
             {
                 if (key[i] == ' ' || key[i] == '\t')
                     return false;

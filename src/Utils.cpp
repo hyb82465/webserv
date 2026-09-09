@@ -36,7 +36,7 @@ std::string Utils::sizetToString(std::size_t n)
 bool Utils::decodeUri(std::string &path)
 {
     std::string decoded;
-    for (std::size_t i = 0; i < path.size(); i++)
+    for (std::size_t i = 0; i < path.size(); ++i)
     {
         if (path[i] != '%')
         {

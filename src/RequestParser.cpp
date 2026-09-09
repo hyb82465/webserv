@@ -63,17 +63,36 @@ HttpStatus RequestParser::parseHeaders(
         std::string key = line.substr(0, colon);
         if (key.empty())
             return HTTP_BAD_REQUEST;
-        for (std::size_t i = 0; i < key.size(); i++)
+        const std::string allowedSymbols = "!#$%&'*+-.^_`|~";
+        for (std::size_t i = 0; i < key.size(); ++i)
         {
-            if (key[i] == ' ' || key[i] == '\t')
+            unsigned char c = static_cast<unsigned char>(key[i]);
+            bool isLetterOrDigit =
+                (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || (c >= '0' && c <= '9');
+            bool isAllowedSymbol = 
+                allowedSymbols.find(static_cast<char>(c)) != std::string::npos;
+            if (!isLetterOrDigit && !isAllowedSymbol)
                 return HTTP_BAD_REQUEST;
         }
         key = Utils::toLower(key);
-        std::string value = Utils::trim(line.substr(colon + 1));
+        std::string value = line.substr(colon + 1);
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            unsigned char c = static_cast<unsigned char>(value[i]);
+            if ((c < 32 && c != '\t') || c == 127)
+                return HTTP_BAD_REQUEST;
+        }
+        value = Utils::trim(value);
         if (request._headers.find(key) != request._headers.end())
         {
-            if (key == "host" || key == "content-length")
-                return HTTP_BAD_REQUEST;
+            if (key == "host"
+                || key == "content-length"
+                || key == "transfer-encoding")
+            {
+                return HTTP_BAD_REQUEST; 
+            }
         }
         request._headers[key] = value;
         if (end == std::string::npos)
@@ -125,6 +144,11 @@ StageResult RequestParser::parseHeadersStage(
 {
     const std::size_t MAX_HEADERS_SIZE = 32768; // 32kb
     if (state.pos > buffer.size())
+    {
+        state.request._status = HTTP_BAD_REQUEST;
+        return STAGE_ERROR;
+    }
+    if (buffer.size() - state.pos >= 2 && buffer.compare(state.pos, 2, "\r\n") == 0)
     {
         state.request._status = HTTP_BAD_REQUEST;
         return STAGE_ERROR;

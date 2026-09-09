@@ -7,16 +7,7 @@ ServerConfig::ServerConfig()
       client_max_body_size(1024 * 1024),
       error_pages(),
       locations()
-{
-    error_pages[400] = "./www/errors/400.html";
-    error_pages[403] = "./www/errors/403.html";
-    error_pages[404] = "./www/errors/404.html";
-    error_pages[405] = "./www/errors/405.html";
-    error_pages[413] = "./www/errors/413.html";
-    error_pages[500] = "./www/errors/500.html";
-    error_pages[501] = "./www/errors/501.html";
-    error_pages[505] = "./www/errors/505.html";
-}
+{}
 
 ServerConfig::~ServerConfig()
 {}

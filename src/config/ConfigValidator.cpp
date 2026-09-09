@@ -147,10 +147,15 @@ void ConfigValidator::validateRedirect(const LocationConfig &location) const
 
 void ConfigValidator::validateUpload(const LocationConfig &location) const
 {
-    const std::string &uploadStore = location.getUploadStore();
-
-    if (!uploadStore.empty() && location.getMethods().empty())
-        throw std::runtime_error("Upload location must define accepted methods");
+    if (location.getUploadStore().empty())
+        return;
+    const std::vector<std::string> &methods = location.getMethods();
+    for (std::size_t i =0; i < methods.size(); ++i)
+    {
+        if (methods[i] == "POST")
+            return;
+    }
+    throw std::runtime_error("upload_store requires POST in methods");
 }
 
 void ConfigValidator::validateCgi(const LocationConfig &location) const

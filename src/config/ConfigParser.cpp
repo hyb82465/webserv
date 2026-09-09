@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <stdexcept>
 #include <limits>
+#include <set>
+#include <map>
 
 ConfigParser::ConfigParser()
 {}
@@ -40,6 +42,7 @@ std::size_t ConfigParser::parseBodySizeValue(TokenStream &tokens)
 ServerConfig ConfigParser::parseServer(TokenStream& tokens)
 {
     ServerConfig config;
+    std::set<std::string> seen;
 
     tokens.expect("server");
     tokens.expect("{");
@@ -47,6 +50,12 @@ ServerConfig ConfigParser::parseServer(TokenStream& tokens)
     while (tokens.hasNext() && tokens.peek() != "}")
     {
         std::string token = tokens.peek();
+        bool singleValue = 
+            token == "root"
+            || token == "index"
+            || token == "client_max_body_size";
+        if (singleValue && !seen.insert(token).second)
+            throw std::runtime_error("Duplicate directive in server: " + token);
         if (tokens.match("listen"))
             parseListen(tokens, config);
         else if (tokens.match("root"))
@@ -125,7 +134,11 @@ void ConfigParser::parseErrorPage(TokenStream& tokens, ServerConfig& config)
         throw std::runtime_error("Invalid Value: " + num);
     if (numValue < 100 || numValue > 599)
         throw std::out_of_range("Invalid Error Page Number.");
-    config.addErrorPage(static_cast<int>(numValue), path);
+    int code = static_cast<int>(numValue);
+    const std::map<int, std::string> &errorPages = config.getErrorPages();
+    if (errorPages.find(code) != errorPages.end())
+        throw std::runtime_error("Duplicate error_page status code: " + num);
+    config.addErrorPage(code, path);
 }
 
 void ConfigParser::parseServerClientMaxBodySize(
@@ -138,22 +151,34 @@ void ConfigParser::parseServerClientMaxBodySize(
 LocationConfig ConfigParser::parseLocation(TokenStream& tokens)
 {
     LocationConfig location;
+    std::set<std::string> seen;
 
     location.setPath(tokens.consume());
     tokens.expect("{");
 
     while (tokens.hasNext() && tokens.peek() != "}")
     {
+        std::string token = tokens.peek();
+        bool singleValue =
+            token == "methods"
+            || token == "root"
+            || token == "index"
+            || token == "client_max_body_size"
+            || token == "autoindex"
+            || token == "upload_store"
+            || token == "return";
+        if (singleValue && !seen.insert(token).second)
+            throw std::runtime_error("Duplicate directive in location: " + token);
         if (tokens.match("methods"))
             parseMethods(tokens, location);
         else if (tokens.match("root"))
             parseLocationRoot(tokens, location);
+        else if (tokens.match("index"))
+            parseLocationIndex(tokens, location);
         else if (tokens.match("client_max_body_size"))
             parseLocationClientMaxBodySize(tokens, location);
         else if (tokens.match("autoindex"))
             parseAutoindex(tokens, location);
-        else if (tokens.match("index"))
-            parseLocationIndex(tokens, location);
         else if (tokens.match("upload_store"))
             parseUploadStore(tokens, location);
         else if (tokens.match("return"))
@@ -175,6 +200,8 @@ void ConfigParser::parseLocationRoot(TokenStream& tokens, LocationConfig& locati
 
 void ConfigParser::parseMethods(TokenStream& tokens, LocationConfig& location)
 {
+    if (!tokens.hasNext() || tokens.peek() == ";")
+        throw std::runtime_error("methods requires at least one HTTP method");
     while (tokens.hasNext() && tokens.peek() != ";")
     {
         std::string method = tokens.consume();
@@ -243,6 +270,9 @@ void ConfigParser::parseCgi(TokenStream& tokens, LocationConfig& location)
         throw std::runtime_error("CGI executable cannot be empty");
     if (extension[0] != '.')
         throw std::runtime_error("CGI extension must start with '.':" + extension);
+    const std::map<std::string, std::string> &cgi = location.getCgi();
+    if (cgi.find(extension) != cgi.end())
+        throw std::runtime_error("Duplicate CGI extension: " + extension);
     location.addCgi(extension, executable);
 }
 

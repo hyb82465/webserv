@@ -352,7 +352,7 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
     std::stringstream html;
     html << "<html>\n";
     html << "<body>\n";
-    html << "<h1> Index of " << requestPath << "</h1>\n";
+    html << "<h1> Index of " << htmlEscape(requestPath) << "</h1>\n";
     while ((entry = readdir(dir)) != NULL)
     {
         std::string name = entry->d_name;
@@ -375,9 +375,9 @@ std::string RequestHandler::generateAutoindex(const std::string &path, const std
             name += "/";
         }
         html << "<a href=\""
-             << href
+             << urlEncodePath(href)
              << "\">"
-             << name
+             << htmlEscape(name)
              << "</a><br>\n";
     }
     html << "</body>\n";
@@ -490,6 +490,63 @@ bool RequestHandler::isSafeFilename(const std::string &filename)
             return false;
     }
     return true;
+}
+
+std::string RequestHandler::htmlEscape(const std::string &value)
+{
+    std::string result;
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        switch (value[i])
+        {
+            case '&':
+                result += "&amp;";
+                break;
+            case '<':
+                result += "&lt;";
+                break;
+            case '>':
+                result += "&gt;";
+                break;
+            case '"':
+                result += "&quot";
+                break;
+            case '\'':
+                result += "&#39;";
+                break;
+            default:
+                result += value[i];
+                break;
+        }
+    }
+    return result;
+}
+
+std::string RequestHandler::urlEncodePath(const std::string &value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    std::string result;
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        unsigned char c = static_cast<unsigned char>(value[i]);
+        bool unreserved =
+            (c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '-'
+            || c == '.'
+            || c == '_'
+            || c == '~';
+        if (unreserved || c == '/')
+            result += static_cast<char>(c);
+        else
+        {
+            result += '%';
+            result += hex[(c >> 4) & 0x0F];
+            result += hex[c & 0x0F];
+        }
+    }
+    return result;
 }
 
 HttpResponse RequestHandler::handleGet(const HttpRequest &request, const LocationConfig *location)

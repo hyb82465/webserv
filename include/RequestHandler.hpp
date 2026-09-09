@@ -59,6 +59,8 @@ private:
     bool isMethodAllowed(const LocationConfig *location, const std::string &requestMethod);
     bool hasParentTraversal(const std::string &path);
     bool isSafeFilename(const std::string &filename);
+    std::string htmlEscape(const std::string &value);
+    std::string urlEncodePath(const std::string &value);
 
     HttpResponse handleGet(const HttpRequest &request, const LocationConfig *location);
     HttpResponse handlePost(const HttpRequest &request, const LocationConfig *location);

@@ -1,21 +1,13 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: zhma <zhma@student.42.fr>                  +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2026/08/04 16:46:58 by yihe              #+#    #+#              #
-#    Updated: 2026/08/24 09:41:26 by zhma             ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
-
 NAME = webserv
-DEBUG ?= 0
-CXX = c++
-CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -DWEBSERV_DEBUG=$(DEBUG)
 
-INCLUDES = -Iinclude
+DEBUG ?= 0
+
+CXX = c++
+CPPFLAGS = -Iinclude -DWEBSERV_DEBUG=$(DEBUG)
+CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -MMD -MP
+
+OBJ_DIR = .build
+
 SRCS = src/main.cpp \
 	   src/Server.cpp \
 	   src/Client.cpp \
@@ -31,26 +23,33 @@ SRCS = src/main.cpp \
 	   src/config/LocationConfig.cpp \
 	   src/config/ListenConfig.cpp \
 	   src/config/ConfigValidator.cpp \
-	   src/Utils.cpp 
-OBJS = $(SRCS:.cpp=.o)
+	   src/Utils.cpp
+OBJS = $(patsubst src/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
+DEPS = $(OBJS:.o=.d)
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
+	$(CXX) $(OBJS) -o $(NAME)
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+$(OBJ_DIR)/%.o: src/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -rf $(OBJ_DIR)
 
 fclean: clean
 	rm -f $(NAME)
 
-re: fclean all
+re: fclean
+	$(MAKE) all DEBUG=$(DEBUG)
 
-.PHONY: all clean fclean re
 print:
 	@echo "SRCS=$(SRCS)"
 	@echo "OBJS=$(OBJS)"
+	@echo "DEPS=$(DEPS)"
+
+-include $(DEPS)
+
+.PHONY: all clean fclean re print

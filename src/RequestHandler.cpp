@@ -559,6 +559,19 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request, const Locatio
         return notFound();
     if (S_ISDIR(info.st_mode))
     {
+        const std::string &requestPath = request.getPath();
+        if (!requestPath.empty()
+            && requestPath[requestPath.size() - 1] != '/')
+        {
+            std::string url = urlEncodePath(requestPath);
+            url += "/";
+            if (!request.getQuery().empty())
+            {
+                url += "?";
+                url += request.getQuery();
+            }
+            return redirect(HTTP_MOVED_PERMANENTLY, url);
+        }
         if (!path.empty() && path[path.size() - 1] != '/')
             path += "/";
         if (!index.empty())
@@ -736,9 +749,14 @@ bool RequestHandler::preCheck(
     }
     if (location != NULL && location->getPath() == requestPath + "/")
     {
-        response = redirect(
-            HTTP_MOVED_PERMANENTLY,
-            requestPath + "/");
+        std::string url = urlEncodePath(requestPath);
+        url += "/";
+        if (!request.getQuery().empty())
+        {
+            url += "?";
+            url += request.getQuery();
+        }
+        response = redirect(HTTP_MOVED_PERMANENTLY, url);
         return true;
     }
     const std::string &requestMethod = request.getMethod();

@@ -11,8 +11,9 @@
 # **************************************************************************** #
 
 NAME = webserv
+DEBUG ?= 0
 CXX = c++
-CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -g -Wall -Wextra -Werror -std=c++98 -DWEBSERV_DEBUG=$(DEBUG)
 
 INCLUDES = -Iinclude
 SRCS = src/main.cpp \

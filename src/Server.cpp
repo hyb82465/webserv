@@ -6,6 +6,7 @@
 #include "CgiHandler.hpp"
 #include "Signal.hpp"
 #include "Utils.hpp"
+#include "Debug.hpp"
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <netdb.h>
@@ -46,7 +47,7 @@ Server::~Server()
         if (_pollFds[i].fd != -1)
             close(_pollFds[i].fd);
     }
-    std::cout << "Server destructor called" << std::endl;
+    DEBUG_LOG("Server destructor called");
 }
 
 bool Server::isListenFd(int fd) const
@@ -230,15 +231,15 @@ bool Server::tryStartCgi(
         return false;
     std::string scriptPath = handler.buildPath(location, request.getPath());
     
-    std::cout << "=== CGI DEBUG ===" << std::endl;
-    std::cout << "method     = [" << request.getMethod() << "]" << std::endl;
-    std::cout << "path       = [" << request.getPath() << "]" << std::endl;
-    std::cout << "executable = [" << executable << "]" << std::endl;
-    std::cout << "scriptPath = [" << scriptPath << "]" << std::endl;
-    std::cout << "serverName = [" << client.getServerName() << "]" << std::endl;
-    std::cout << "serverPort = [" << client.getServerPort() << "]" << std::endl;
-    std::cout << "remoteAddr = [" << client.getRemoteAddr() << "]" << std::endl;
-    std::cout << "=================" << std::endl;
+    DEBUG_LOG("=== CGI DEBUG ===");
+    DEBUG_LOG("method     = [" << request.getMethod() << "]");
+    DEBUG_LOG("path       = [" << request.getPath() << "]");
+    DEBUG_LOG("executable = [" << executable << "]");
+    DEBUG_LOG("scriptPath = [" << scriptPath << "]");
+    DEBUG_LOG("serverName = [" << client.getServerName() << "]");
+    DEBUG_LOG("serverPort = [" << client.getServerPort() << "]");
+    DEBUG_LOG("remoteAddr = [" << client.getRemoteAddr() << "]");
+    DEBUG_LOG("=================");
     
     if (scriptPath.empty())
     {
@@ -292,9 +293,7 @@ void Server::processRequest(int fd, std::size_t &i)
     }
     else if (result == PARSE_ERROR)
     {
-        std::cout << "parse error, status = "
-                  << request.getStatus()
-                  << std::endl;
+        DEBUG_LOG("parse error, status = " << request.getStatus());
         state.keepAlive = false;
         HttpResponse response = handler.handleError(request.getStatus());
         queueResponse(it->second, i, response);
@@ -417,11 +416,11 @@ void Server::acceptClient(int listenFd)
     _pollFds.push_back(clientPollFd);
 
     _clients.insert(std::make_pair(clientFd, Client(clientFd, serverIndex, serverPort, remoteAddr, serverName)));
-    std::cout << "client connected, fd = "
-              << clientFd
-              << ", port = "
-              << serverPort
-              << std::endl;
+    DEBUG_LOG(
+        "client connected, fd = "
+        << clientFd
+        << ", port = "
+        << serverPort);
 }
 
 void Server::handleRead(int fd, std::size_t &i)
@@ -441,7 +440,7 @@ void Server::handleRead(int fd, std::size_t &i)
     }
     else if (byteRead == 0)
     {
-        std::cout << "client disconnected" << std::endl;
+        DEBUG_LOG("client disconnected");
         removeClient(fd, i);
         return;
     }
@@ -471,18 +470,16 @@ void Server::handleWrite(int fd, std::size_t &i)
         return;
     }
     const std::string &response = it->second.getWriteBuffer();
-    if (it->second.getBytesSent() == 0)
+    if (WEBSERV_DEBUG && it->second.getBytesSent() == 0)
     {
         RequestState &state = it->second.getRequestState();
-
         std::string::size_type end = response.find("\r\n");
-        std::cout << "[RESPONSE]"
-                  << " fd=" << fd
-                  << " method=" << state.request.getMethod()
-                  << " path=" << state.request.getPath()
-                  << " status="
-                  << response.substr(0, end)
-                  << std::endl;
+        DEBUG_LOG(
+            "[RESPONSE]"
+            << " fd=" << fd
+            << " method=" << state.request.getMethod()
+            << " path=" << state.request.getPath()
+            << " status=" << response.substr(0, end));
     }
     ssize_t bytesSent = send(
         fd,
@@ -498,7 +495,10 @@ void Server::handleWrite(int fd, std::size_t &i)
     it->second.addBytesSent(static_cast<std::size_t>(bytesSent));
     if (it->second.getBytesSent() >= response.size())
     {
-        std::cout << "totally sent " << it->second.getBytesSent() << " bytes" << std::endl;
+        DEBUG_LOG(
+            "totally sent "
+            << it->second.getBytesSent()
+            << " bytes");
         RequestState &state = it->second.getRequestState();
         if (!state.keepAlive)
         {

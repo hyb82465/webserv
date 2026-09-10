@@ -798,7 +798,6 @@ void Server::buildCgiResponse(std::string &response, bool keepAlive) const
     }
     std::string statusLine = "200 OK";
     std::string normalizedHeaders;
-    bool hasContentLength = false;
 
     std::size_t bodyStart = 0;
     if (pos == std::string::npos)
@@ -846,10 +845,10 @@ void Server::buildCgiResponse(std::string &response, bool keepAlive) const
                     else
                         statusLine = "500 Internal Server Error";
                 }
-                else
+                else if (name != "content-length"
+                        && name != "connection"
+                        && name != "transfer-encoding")
                 {
-                    if (name == "content-length")
-                        hasContentLength = true;
                     normalizedHeaders += line;
                     normalizedHeaders += "\r\n";
                 }
@@ -865,10 +864,9 @@ void Server::buildCgiResponse(std::string &response, bool keepAlive) const
     httpHeaders += statusLine;
     httpHeaders += "\r\n";
     httpHeaders += normalizedHeaders;
-    if (!hasContentLength)
-        httpHeaders += "Content-Length: "
-                    + Utils::sizetToString(bodySize)
-                    + "\r\n";
+    httpHeaders += "Content-Length: "
+                + Utils::sizetToString(bodySize)
+                + "\r\n";
     if (keepAlive)
         httpHeaders += "Connection: keep-alive\r\n";
     else

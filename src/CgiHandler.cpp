@@ -178,10 +178,19 @@ bool CgiHandler::readOutput()
     ssize_t bytes = read(_stdoutFd, buffer, sizeof(buffer));
     if (bytes > 0)
     {
+        const std::size_t maxOutputSize = 128u * 1024u * 1024u; // 128MiB
+        std::size_t received = static_cast<std::size_t>(bytes);
+        if (_output.size() > maxOutputSize
+            || received > maxOutputSize - _output.size())
+        {
+            _ioFailed = true;
+            closeOutput();
+            return true;
+        }
         std::time_t now = std::time(NULL);
         if (now != static_cast<std::time_t>(-1))
             _lastActivity = now;
-        _output.append(buffer, static_cast<std::size_t>(bytes));
+        _output.append(buffer, received);
         return false;
     }
     else if (bytes == 0)

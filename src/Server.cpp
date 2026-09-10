@@ -567,11 +567,13 @@ void Server::handleCgiWrite(int fd, std::size_t &i)
         removePollFd(fd);
         return;
     }
-
     cgi->writeBody();
-
+    if (cgi->hasIoFailed())
+    {
+        handleCgiError(fd);
+        return;
+    }
     // Request body completely written.CgiHandler already closed stdin.
-
     if (!cgi->isStdinOpen())
     {
         _cgiFds.erase(fd);
@@ -579,45 +581,75 @@ void Server::handleCgiWrite(int fd, std::size_t &i)
         // do NOT delete CGI here. stdout is still needed.
         return;
     }
-
     ++i;
 }
 
 void Server::handleCgiRead(int fd, std::size_t &i)
 {
     CgiHandler *cgi = getCgiByFd(fd);
-
     if (cgi == NULL)
     {
         removePollFd(fd);
         return;
     }
-
     cgi->readOutput();
-
+    if (cgi->hasIoFailed())
+    {
+        handleCgiError(fd);
+        return;
+    }
     if (!cgi->isStdoutOpen())
     {
         _cgiFds.erase(fd);
         removePollFd(fd);
-
         // stdout EOF doesn't necessarily mean waitpid() already succeeded.
         if (cgi->waitForChild())
-        {
             finishCgi(cgi);
-        }
-
         return;
     }
-
     ++i;
 }
+
+void Server::handleCgiError(int fd)
+{
+    CgiHandler *cgi = getCgiByFd(fd);
+    if (cgi == NULL)
+    {
+        _cgiFds.erase(fd);
+        removePollFd(fd);
+        return;
+    }
+    cgi->markIoFailed();
+    _cgiFds.erase(fd);
+    removePollFd(fd);
+    cgi->killChild();
+    finishCgi(cgi);
+}
+
+void Server::handleCgiHangup(int fd, std::size_t &i)
+{
+    CgiHandler *cgi = getCgiByFd(fd);
+    if (cgi == NULL)
+    {
+        _cgiFds.erase(fd);
+        removePollFd(fd);
+        return;
+    }
+    if (cgi->getStdoutFd() == fd)
+    {
+        handleCgiRead(fd, i);
+        return;
+    }
+    cgi->closeInput();
+    _cgiFds.erase(fd);
+    removePollFd(fd);
+}
+
 CgiHandler *Server::getCgiByFd(int fd)
 {
     std::map<int, CgiHandler *>::iterator it = _cgiFds.find(fd);
-
     if (it == _cgiFds.end())
         return NULL;
-
     return it->second;
 }
 
@@ -723,7 +755,6 @@ void Server::removeCgiByClientFd(int clientFd)
             removeCgi(cgi);
             continue;
         }
-
         ++i;
     }
 }
@@ -771,19 +802,13 @@ void Server::checkCgiChildren()
 std::string Server::findCgiExecutable(const std::string &path, const LocationConfig &location) const
 {
     std::string::size_type pos = path.find_last_of('.');
-
     if (pos == std::string::npos)
         return "";
-
     std::string extension = path.substr(pos);
-
     const std::map<std::string, std::string> &cgi = location.getCgi();
-
     std::map<std::string, std::string>::const_iterator it = cgi.find(extension);
-
     if (it == cgi.end())
         return "";
-
     return it->second;
 }
 
@@ -798,7 +823,6 @@ void Server::buildCgiResponse(std::string &response, bool keepAlive) const
     }
     std::string statusLine = "200 OK";
     std::string normalizedHeaders;
-
     std::size_t bodyStart = 0;
     if (pos == std::string::npos)
         normalizedHeaders = "Content-Type: text/html\r\n";
@@ -926,47 +950,12 @@ void Server::checkClientTimeouts()
     }
 }
 
-void Server::handleCgiError(int fd)
-{
-    CgiHandler *cgi = getCgiByFd(fd);
-    if (cgi == NULL)
-    {
-        _cgiFds.erase(fd);
-        removePollFd(fd);
-        return;
-    }
-    cgi->markIoFailed();
-    cgi->killChild();
-    finishCgi(cgi);
-}
-
-void Server::handleCgiHangup(int fd, std::size_t &i)
-{
-    CgiHandler *cgi = getCgiByFd(fd);
-    if (cgi == NULL)
-    {
-        _cgiFds.erase(fd);
-        removePollFd(fd);
-        return;
-    }
-    if (cgi->getStdoutFd() == fd)
-    {
-        handleCgiRead(fd, i);
-        return;
-    }
-    cgi->closeInput();
-    _cgiFds.erase(fd);
-    removePollFd(fd);
-}
-
 void Server::run()
 {
     std::map<std::string, bool> usedListen;
-
     for (std::size_t i = 0; i < _configs.size(); ++i)
     {
         const std::vector<ListenConfig>& listens = _configs[i].getListens();
-
         for (std::size_t j = 0; j < listens.size(); ++j)
         {
             std::stringstream key;
@@ -976,7 +965,6 @@ void Server::run()
 
             if (usedListen.find(key.str()) != usedListen.end())
                 throw std::runtime_error("Duplicate listen: " + key.str());
-
             usedListen[key.str()] = true;
         }
     }

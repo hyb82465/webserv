@@ -34,7 +34,10 @@ private:
     bool setNonBlocking(int fd);
     int setupListenSocket(const ListenConfig& listenConfig);
     void removeClient(int fd, std::size_t i);
-    void queueResponse(Client &client, std::size_t pollIndex, HttpResponse &response);
+    void queueResponse(
+        Client &client,
+        std::size_t pollIndex,
+        HttpResponse &response);
     ParseResult parseClientRequest(
         Client &client,
         const ServerConfig &config,
@@ -57,6 +60,8 @@ private:
                   const std::string& executable);
     void handleCgiWrite(int fd, std::size_t& i);
     void handleCgiRead(int fd, std::size_t& i);
+    void handleCgiError(int fd);
+    void handleCgiHangup(int fd, std::size_t &i);
     CgiHandler* getCgiByFd(int fd);
     void addCgi(CgiHandler* cgi);
     void removeCgi(CgiHandler* cgi);
@@ -65,15 +70,14 @@ private:
     void addCgiPollFds(CgiHandler* cgi);
     void checkCgiChildren();
     void removeCgiByClientFd(int clientFd);
-
-    std::string findCgiExecutable(const std::string& path, const LocationConfig& location) const;
-    void buildCgiResponse(std::string &response, bool keepAlive) const;
-
+    std::string findCgiExecutable(
+        const std::string& path,
+        const LocationConfig& location) const;
+    void buildCgiResponse(
+        std::string &response,
+        bool keepAlive) const;
     void checkCgiTimeouts();
     void checkClientTimeouts();
-
-    void handleCgiError(int fd);
-    void handleCgiHangup(int fd, std::size_t &i);
 
 public:
     Server(const std::vector<ServerConfig>& _configs);

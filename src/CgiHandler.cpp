@@ -70,17 +70,23 @@ void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
         close(inputPipe[0]);
         throw std::runtime_error("outputpipe pipe failed");
     }
-
-    buildEnvironment(request);
-
+    try
+    {
+        buildEnvironment(request);
+        setNonBlocking(inputPipe[1]);  // use to write data to CGI
+        setNonBlocking(outputPipe[0]); // to read data from CGI
+    }
+    catch (...)
+    {
+        close(inputPipe[0]);
+        close(inputPipe[1]);
+        close(outputPipe[0]);
+        close(outputPipe[1]);
+        throw;
+    }
     request.swapBody(_requestBody);
     _bodyOffset = 0; // no data to CGI.
-
-    setNonBlocking(inputPipe[1]);  // use to write data to CGI
-    setNonBlocking(outputPipe[0]); // to read data from CGI
-
     _pid = fork();
-
     if (_pid == -1)
     {
         close(inputPipe[1]);
@@ -89,7 +95,6 @@ void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
         close(outputPipe[0]);
         throw std::runtime_error("fork failed");
     }
-
     if (_pid == 0) // child
     {
         close(inputPipe[1]);
@@ -101,13 +106,11 @@ void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
             _exit(1);
         close(inputPipe[0]);
         close(outputPipe[1]);
-
         for (std::size_t i = 0; i < serverFds.size(); ++i)
         {
             if (serverFds[i] > STDERR_FILENO)
                 close(serverFds[i]);
         }
-    
         std::string directory = getDirectory(_scriptPath);
         if (chdir(directory.c_str()) == -1)
             _exit(1);

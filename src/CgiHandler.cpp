@@ -29,6 +29,7 @@ CgiHandler::CgiHandler(
       _environment(),
       _exitStatus(-1),
       _childFinished(false),
+      _ioFailed(false),
       _lastActivity(0)
 {}
 
@@ -154,6 +155,7 @@ bool CgiHandler::writeBody()
     // real write error
     else
     {
+        _ioFailed = true;
         closeInput();
         return true;
     }
@@ -180,6 +182,7 @@ bool CgiHandler::readOutput()
     }
     else
     {
+        _ioFailed = true;
         closeOutput();
         return true;
     }
@@ -410,9 +413,19 @@ void CgiHandler::killChild()
 
 bool CgiHandler::isChildSuccess() const
 {
-    if (!_childFinished)
+    if (!_childFinished || _ioFailed)
         return false;
-    return WIFEXITED(_exitStatus) && WEXITSTATUS(_exitStatus) == 0;
+    return WIFEXITED(_exitStatus) && (WEXITSTATUS(_exitStatus) == 0);
+}
+
+bool CgiHandler::hasIoFailed() const
+{
+    return _ioFailed;
+}
+
+void CgiHandler::markIoFailed()
+{
+    _ioFailed = true;
 }
 
 void CgiHandler::swapOutput(std::string &output)

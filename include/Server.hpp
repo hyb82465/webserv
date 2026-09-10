@@ -72,6 +72,9 @@ private:
     void checkCgiTimeouts();
     void checkClientTimeouts();
 
+    void handleCgiError(int fd);
+    void handleCgiHangup(int fd, std::size_t &i);
+
 public:
     Server(const std::vector<ServerConfig>& _configs);
     ~Server();

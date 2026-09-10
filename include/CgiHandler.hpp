@@ -13,32 +13,23 @@ class CgiHandler
 {
 private:
     int _clientFd;
-
     pid_t _pid;
-
     int _stdinFd;
     int _stdoutFd;
-
     bool _stdinOpen;
     bool _stdoutOpen;
-
     std::string _executable;
     std::string _scriptPath;
-
     int  _serverPort;
     std::string _remoteAddr;
-    std::string _serverName;
-    
+    std::string _serverName;  
     std::string _requestBody;
     std::size_t _bodyOffset; // how many bytes wroten in CGI
-
     std::string _output;
-
     std::vector<std::string> _environment;
-
     int _exitStatus;
     bool _childFinished;
-
+    bool _ioFailed;
     std::time_t _lastActivity;
 
     CgiHandler(const CgiHandler &other);
@@ -50,39 +41,37 @@ private:
     void freeEnvp(char **envp) const;
 
     std::string getDirectory(const std::string &path) const;
-
     std::string getFileName(const std::string &path) const;
 
 public:
-    CgiHandler(int clientFd, const std::string &executable, const std::string &scriptPath,
-                int serverPort, const std::string &remoteAddr, const std::string &serverName);
+    CgiHandler(int clientFd,
+               const std::string &executable,
+               const std::string &scriptPath,
+               int serverPort,
+               const std::string &remoteAddr,
+               const std::string &serverName);
     ~CgiHandler();
 
     void start(HttpRequest &request);
-
     bool writeBody();
-
     bool readOutput();
-
     void closeInput();
     void closeOutput();
 
     int getClientFd() const;
-
     int getStdinFd() const;
     int getStdoutFd() const;
-
     pid_t getPid() const;
 
     bool isStdinOpen() const;
     bool isStdoutOpen() const;
-
     bool waitForChild();
     bool isChildSuccess() const;
-
     bool hasTimedOut(int timeoutSeconds) const;
-    void killChild();
+    bool hasIoFailed() const;
+    void markIoFailed();
 
+    void killChild();
     void swapOutput(std::string &output);
 };
 

@@ -916,6 +916,39 @@ void Server::checkClientTimeouts()
     }
 }
 
+void Server::handleCgiError(int fd)
+{
+    CgiHandler *cgi = getCgiByFd(fd);
+    if (cgi == NULL)
+    {
+        _cgiFds.erase(fd);
+        removePollFd(fd);
+        return;
+    }
+    cgi->markIoFailed();
+    cgi->killChild();
+    finishCgi(cgi);
+}
+
+void Server::handleCgiHangup(int fd, std::size_t &i)
+{
+    CgiHandler *cgi = getCgiByFd(fd);
+    if (cgi == NULL)
+    {
+        _cgiFds.erase(fd);
+        removePollFd(fd);
+        return;
+    }
+    if (cgi->getStdoutFd() == fd)
+    {
+        handleCgiRead(fd, i);
+        return;
+    }
+    cgi->closeInput();
+    _cgiFds.erase(fd);
+    removePollFd(fd);
+}
+
 void Server::run()
 {
     std::map<std::string, bool> usedListen;
@@ -988,32 +1021,25 @@ void Server::run()
             // CGI： check whether it is CGI pipe or client socket
             if (_cgiFds.find(fd) != _cgiFds.end())
             {
-                if (_pollFds[i].revents & POLLOUT)
+                short revents = _pollFds[i].revents;
+                if (revents & (POLLERR | POLLNVAL))
                 {
-                    handleCgiWrite(fd, i);
+                    handleCgiError(fd);
                     continue;
                 }
-                if (_pollFds[i].revents & POLLIN)
+                if (revents & POLLIN)
                 {
                     handleCgiRead(fd, i);
                     continue;
                 }
-                if (_pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+                if (revents & POLLOUT)
                 {
-                    CgiHandler *cgi = getCgiByFd(fd);
-                    if (cgi != NULL && cgi->getStdoutFd() == fd)
-                    {
-                        cgi->readOutput();
-                        if (!cgi->isStdoutOpen())
-                        {
-                            _cgiFds.erase(fd);
-                            removePollFd(fd);
-                            if (cgi->waitForChild())
-                                finishCgi(cgi);
-                            continue;
-                        }
-                    }
-                    ++i;
+                    handleCgiWrite(fd, i);
+                    continue;
+                }
+                if (revents & POLLHUP)
+                {
+                    handleCgiHangup(fd, i);
                     continue;
                 }
                 ++i;

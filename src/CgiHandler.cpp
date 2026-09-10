@@ -17,12 +17,17 @@ CgiHandler::CgiHandler(
     int serverPort,
     const std::string &remoteAddr,
     const std::string &serverName)
-    : _clientFd(clientFd), _pid(-1),
-      _stdinFd(-1), _stdoutFd(-1),
-      _stdinOpen(false), _stdoutOpen(false),
-      _executable(executable), _scriptPath(scriptPath),
+    : _clientFd(clientFd),
+      _pid(-1),
+      _stdinFd(-1),
+      _stdoutFd(-1),
+      _stdinOpen(false),
+      _stdoutOpen(false),
+      _executable(executable),
+      _scriptPath(scriptPath),
       _serverPort(serverPort), 
-      _remoteAddr(remoteAddr),_serverName(serverName),
+      _remoteAddr(remoteAddr),
+      _serverName(serverName),
       _requestBody(""),
       _bodyOffset(0),
       _output(""),
@@ -52,7 +57,7 @@ CgiHandler::~CgiHandler()
     closeOutput();
 }
 
-void CgiHandler::start(HttpRequest &request)
+void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
 {
     int inputPipe[2];
     int outputPipe[2];
@@ -97,6 +102,12 @@ void CgiHandler::start(HttpRequest &request)
         close(inputPipe[0]);
         close(outputPipe[1]);
 
+        for (std::size_t i = 0; i < serverFds.size(); ++i)
+        {
+            if (serverFds[i] > STDERR_FILENO)
+                close(serverFds[i]);
+        }
+    
         std::string directory = getDirectory(_scriptPath);
         if (chdir(directory.c_str()) == -1)
             _exit(1);
@@ -146,11 +157,6 @@ bool CgiHandler::writeBody()
             return true;
         }
         return false;
-    }
-    else if (bytes == 0)
-    {
-        closeInput();
-        return true;
     }
     // real write error
     else

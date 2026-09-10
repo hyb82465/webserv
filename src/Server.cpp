@@ -531,10 +531,22 @@ void Server::startCgi(int clientFd,
     int serverPort = clientIt->second.getServerPort();
     const std::string &remoteAddr = clientIt->second.getRemoteAddr();
     const std::string &serverName = clientIt->second.getServerName();
-    CgiHandler *cgi = new CgiHandler(clientFd, executable, scriptPath, serverPort, remoteAddr, serverName);
+    CgiHandler *cgi = new CgiHandler(
+        clientFd,
+        executable,
+        scriptPath,
+        serverPort,
+        remoteAddr,
+        serverName);
+    std::vector<int> serverFds;
+    for (std::size_t i = 0; i < _pollFds.size(); ++i)
+    {
+        if (_pollFds[i].fd >= 0)
+            serverFds.push_back(_pollFds[i].fd);
+    }
     try
     {
-        cgi->start(request);
+        cgi->start(request, serverFds);
     }
     catch (...)
     {

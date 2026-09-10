@@ -52,7 +52,7 @@ public:
                const std::string &serverName);
     ~CgiHandler();
 
-    void start(HttpRequest &request);
+    void start(HttpRequest &request, const std::vector<int> &serverFds);
     bool writeBody();
     bool readOutput();
     void closeInput();

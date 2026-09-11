@@ -3,11 +3,13 @@
 import os
 import secrets
 import sys
+import time
 from http.cookies import SimpleCookie, CookieError
 
 
 COOKIE_NAME = "webserv_session"
 SESSION_ID_LENGTH = 32
+SESSION_LIFETIME = 30 * 60
 
 
 def is_valid_session_id(value):
@@ -33,6 +35,24 @@ session_directory = os.path.join(
 
 os.makedirs(session_directory, exist_ok=True)
 
+current_time = time.time()
+
+for filename in os.listdir(session_directory):
+    if not is_valid_session_id(filename):
+        continue
+
+    path = os.path.join(session_directory, filename)
+
+    try:
+        if os.path.islink(path):
+            continue
+
+        last_activity = os.path.getmtime(path)
+
+        if current_time - last_activity > SESSION_LIFETIME:
+            os.remove(path)
+    except OSError:
+        pass
 
 cookie_header = os.environ.get("HTTP_COOKIE", "")
 cookies = SimpleCookie()

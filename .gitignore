@@ -4,3 +4,4 @@ webserv
 .vscode/
 .DS_Store
 .build
+session_data/

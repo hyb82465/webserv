@@ -301,26 +301,58 @@ The supplied school tester can be run while the server is active:
 Additional black-box and regression tests are available under `my_testers/`:
 
 ```bash
-bash my_testers/test_webserv.sh
-python3 my_testers/test_keepalive.py
-python3 my_testers/test_pipelining.py
-python3 my_testers/test_partial_request.py
-python3 my_testers/no_cgi_tester.py
+python3 my_testers/webserv_tester.py
+python3 my_testers/client_timeout.py
+python3 my_testers/cgi_stress.py
 ```
 
-`my_testers/cgi_stress.py` is intentionally resource intensive: it runs
-concurrent 100,000,000-byte CGI requests. Only run it in an environment with
-enough memory and swap space.
+Run them from the repository root while the server is using
+`config/default.conf`. `client_timeout.py` takes approximately 35 seconds.
+`cgi_stress.py` is intentionally resource intensive: its default workload is
+20 workers, five rounds per worker, and a 100,000,000-byte request per round.
+A smaller check can be run with:
+
+```bash
+python3 my_testers/cgi_stress.py \
+    --workers 2 \
+    --rounds 2 \
+    --body-size 1000000 \
+    --timeout 30
+```
+
+### Siege stress test
+
+With the server running, send 1,000 GET requests to the empty static page:
+
+```bash
+siege -b -c 20 -r 50 http://127.0.0.1:8080/directory/
+```
+
+In another terminal, watch the server's physical memory usage:
+
+```bash
+WEBSERV_PID=$(pgrep -n -x webserv)
+watch -n 1 "ps -o pid=,rss=,etime=,cmd= -p $WEBSERV_PID"
+```
+
+Check that `Availability` is above 99.5% and `Failed transactions` is zero.
+The `RSS` column is physical memory in KiB. It may rise during the test, but
+after repeated identical tests it should stabilize instead of growing without
+limit. When using Docker, `docker stats <container-id>` can also show the total
+container memory.
 
 Before submission, perform a clean build and full regression run:
 
 ```bash
 make fclean
 make
+make
 ./webserv config/default.conf
 ```
 
-Then run the school tester and relevant manual tests from another terminal.
+The second `make` should report that there is nothing to rebuild. Then run the
+school tester, the three custom testers, the bounded Siege test, and the
+relevant browser and configuration checks from another terminal.
 
 ## Technical choices and limitations
 

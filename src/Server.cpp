@@ -691,6 +691,7 @@ void Server::removeCgi(CgiHandler *cgi)
         }
     }
 }
+
 void Server::finishCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)

@@ -1,0 +1,1769 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>分类知识点 · Webserv 项目复习手册</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <aside>
+        <h1>WEBSERV<br>项目复习手册</h1>
+        <p>源码快照 · 2026-09-11<br>从事件到数据，从函数到知识点</p><a class="home-link" href="index.html">首页与结构图</a>
+        <details>
+            <summary>架构与运行流程</summary><a href="architecture.html#book1-1">Webserv 复习笔记（一）：架构与运行流程</a><a
+                href="architecture.html#book1-2">1. 怎么读这套笔记</a><a href="architecture.html#book1-3">2. 整个项目在做什么</a><a
+                href="architecture.html#book1-4">3. 全部自定义类型，以及它们保存什么</a><a href="architecture.html#book1-5">4.
+                对象关系与资源所有权</a><a href="architecture.html#book1-6">5. 启动阶段：从配置文本到监听 socket</a><a
+                href="architecture.html#book1-10">6. poll 主循环：为什么一个线程能处理多个连接</a><a href="architecture.html#book1-11">7.
+                从 recv 到 HttpRequest：状态机</a><a href="architecture.html#book1-15">8. 普通资源处理：GET、POST、DELETE</a><a
+                href="architecture.html#book1-21">9. CGI：不是 C++ 函数调用，而是启动另一个程序</a><a
+                href="architecture.html#book1-27">10. 响应发送、keep-alive 与 pipelining</a><a
+                href="architecture.html#book1-28">11. 超时、退出和大内存</a><a href="architecture.html#book1-29">12. Bonus
+                与测试代码的归属</a><a href="architecture.html#book1-30">13. 当前实现与容易记错的地方</a><a
+                href="architecture.html#book1-31">14. 复习顺序与自测</a>
+        </details>
+        <details>
+            <summary>完整函数索引</summary><a href="functions.html#book2-1">Webserv 复习笔记（二）：完整函数索引</a><a
+                href="functions.html#book2-2">0. 生命周期关系（不等于普通调用）</a><a href="functions.html#book2-3">全局入口与信号（2
+                个定义）</a><a href="functions.html#book2-6">Server（31 个定义）</a><a href="functions.html#book2-38">Client（23
+                个定义）</a><a href="functions.html#book2-62">RequestState（2 个定义）</a><a
+                href="functions.html#book2-65">RequestParser（11 个定义）</a><a href="functions.html#book2-77">HttpRequest（13
+                个定义）</a><a href="functions.html#book2-91">RequestHandler（37 个定义）</a><a
+                href="functions.html#book2-129">HttpResponse（9 个定义）</a><a href="functions.html#book2-139">CgiHandler（26
+                个定义）</a><a href="functions.html#book2-166">ConfigParser（20 个定义）</a><a
+                href="functions.html#book2-187">ConfigValidator（15 个定义）</a><a
+                href="functions.html#book2-203">Tokenizer（1 个定义）</a><a href="functions.html#book2-205">TokenStream（6
+                个定义）</a><a href="functions.html#book2-212">ServerConfig（17 个定义）</a><a
+                href="functions.html#book2-230">LocationConfig（25 个定义）</a><a
+                href="functions.html#book2-256">ListenConfig（9 个定义）</a><a href="functions.html#book2-266">Utils（4
+                个定义）</a><a href="functions.html#book2-271">仅声明、没有定义的私有接口</a><a href="functions.html#book2-272">Python
+                CGI 与测试器：显式函数和脚本入口</a>
+        </details>
+        <details open>
+            <summary>分类知识点</summary><a href="knowledge.html#book3-1">Webserv 复习笔记（三）：分类知识点</a><a
+                href="knowledge.html#book3-2">1. C++98 基础与对象设计</a><a href="knowledge.html#book3-3">2. 标准库、字符串和容器</a><a
+                href="knowledge.html#book3-4">3. 配置文件与解析设计</a><a href="knowledge.html#book3-5">4. TCP、socket 与地址</a><a
+                href="knowledge.html#book3-6">5. 非阻塞 I/O、poll 与事件循环</a><a href="knowledge.html#book3-7">6. HTTP
+                报文与状态机</a><a href="knowledge.html#book3-8">7. 路由、文件系统、上传与安全</a><a href="knowledge.html#book3-9">8.
+                CGI、进程、管道与信号</a><a href="knowledge.html#book3-10">9. 内存、生命周期与错误处理</a><a
+                href="knowledge.html#book3-11">10. Cookie、Session 和 Python CGI</a><a href="knowledge.html#book3-12">11.
+                Makefile、编译和链接</a><a href="knowledge.html#book3-13">12. 测试、终端和部署环境</a><a
+                href="knowledge.html#book3-14">13. 系统函数速查：输入、返回与职责</a><a href="knowledge.html#book3-15">14.
+                系统结构体与宏速查</a><a href="knowledge.html#book3-16">15. 最后用五条真实路径串联复习</a>
+        </details>
+        <details>
+            <summary>全部类型声明</summary><a href="types.html#book4-1">Webserv 补充索引：全部类型声明原文</a><a
+                href="types.html#book4-2">CgiHandler.hpp</a><a href="types.html#book4-3">Client.hpp</a><a
+                href="types.html#book4-4">ConfigParser.hpp</a><a href="types.html#book4-5">ConfigValidator.hpp</a><a
+                href="types.html#book4-6">Debug.hpp</a><a href="types.html#book4-7">HttpRequest.hpp</a><a
+                href="types.html#book4-8">HttpResponse.hpp</a><a href="types.html#book4-9">HttpStatus.hpp</a><a
+                href="types.html#book4-10">ListenConfig.hpp</a><a href="types.html#book4-11">LocationConfig.hpp</a><a
+                href="types.html#book4-12">RequestHandler.hpp</a><a href="types.html#book4-13">RequestParser.hpp</a><a
+                href="types.html#book4-14">RequestState.hpp</a><a href="types.html#book4-15">Server.hpp</a><a
+                href="types.html#book4-16">ServerConfig.hpp</a><a href="types.html#book4-17">Signal.hpp</a><a
+                href="types.html#book4-18">TokenStream.hpp</a><a href="types.html#book4-19">Tokenizer.hpp</a><a
+                href="types.html#book4-20">Utils.hpp</a>
+        </details>
+    </aside>
+    <main>
+        <header>
+            <h1>分类知识点</h1>
+            <p><a href="index.html">← 返回首页</a></p>
+        </header>
+        <div class="toolbar"><input id="search" aria-label="筛选章节和函数" placeholder="搜索当前页面"><button
+                id="clear">清空</button><button id="expand">展开函数</button><button id="collapse">收起函数</button><button
+                id="print">展开并打印</button></div>
+        <p id="count" class="meta" aria-live="polite"></p>
+        <article>
+            <section class="unit" id="book3-1">
+                <h1>Webserv 复习笔记（三）：分类知识点</h1>
+                <p>范围：当前 C++ 服务端、配置、CGI 示例、Python/Shell 测试和 Makefile
+                    中直接涉及的知识，以及理解它们必需的基础。编号采用“类别.条目”，便于逐项复习。它不是所有计算机知识的百科，也不是学校允许函数清单；具体限制仍以提交版本 subject 为准。</p>
+            </section>
+            <section class="unit" id="book3-2">
+                <h2>1. C++98 基础与对象设计</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>1.01</td>
+                            <td>class 与 struct</td>
+                            <td>默认访问权限分别是 private 和 public。项目用 class 封装行为，用 RequestState、MultipartPart 聚合数据；两者都可以有成员函数。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>1.02</td>
+                            <td>public / private</td>
+                            <td>public 是外部接口，private 是内部细节。Server 只公开构造、析构和 run，事件处理函数留在 private。</td>
+                        </tr>
+                        <tr>
+                            <td>1.03</td>
+                            <td>构造函数</td>
+                            <td>创建对象时建立初始状态。CgiHandler 把 fd、pid 初始化为 -1，避免把未取得的资源当作有效资源。</td>
+                        </tr>
+                        <tr>
+                            <td>1.04</td>
+                            <td>初始化列表</td>
+                            <td>在进入构造函数体前初始化成员；引用成员必须初始化，不能事后重新绑定。RequestHandler::_server 使用初始化列表。</td>
+                        </tr>
+                        <tr>
+                            <td>1.05</td>
+                            <td>析构函数</td>
+                            <td>对象寿命结束时执行。局部对象会自动析构，new 出来的对象需 delete；空 Client 析构不会自动 close 它保存的整数 fd。</td>
+                        </tr>
+                        <tr>
+                            <td>1.06</td>
+                            <td>拷贝构造</td>
+                            <td>用已有对象创建新对象。ServerConfig、Client 等按值进入容器时可能触发；复制 fd 数字不等于复制连接。</td>
+                        </tr>
+                        <tr>
+                            <td>1.07</td>
+                            <td>赋值运算符</td>
+                            <td>改写已经存在的对象；operator= 常用 if (this != &amp;other) 防自赋值并返回 *this。RequestState.reset 会给
+                                request 赋值。</td>
+                        </tr>
+                        <tr>
+                            <td>1.08</td>
+                            <td>禁止拷贝</td>
+                            <td>C++98 可把拷贝构造/赋值声明为 private 且不定义。Server、CgiHandler 等使用此方式，防止资源被两个对象错误共享。</td>
+                        </tr>
+                        <tr>
+                            <td>1.09</td>
+                            <td>隐式特殊成员</td>
+                            <td>未手写不等于不存在。MultipartPart、TokenStream 等仍可能使用编译器生成的构造/复制/析构；完整索引只计显式定义。</td>
+                        </tr>
+                        <tr>
+                            <td>1.10</td>
+                            <td>值、引用、指针</td>
+                            <td>值产生独立副本；引用表示已有对象的别名；指针可为空。LocationConfig* 为空表示无匹配 location。</td>
+                        </tr>
+                        <tr>
+                            <td>1.11</td>
+                            <td>const 引用</td>
+                            <td>只读借用大型对象，避免复制。getBody 返回 const string&amp;；使用方不能让引用比源对象活得更久。</td>
+                        </tr>
+                        <tr>
+                            <td>1.12</td>
+                            <td>const 成员函数</td>
+                            <td>承诺不通过 this 修改普通成员。Client 的 getRequestState 有 const 和非 const 重载，返回权限不同。</td>
+                        </tr>
+                        <tr>
+                            <td>1.13</td>
+                            <td>指针引用</td>
+                            <td>const LocationConfig *&amp;location 表示“引用一个指向只读配置的指针”；parseClientRequest
+                                可以让调用方的指针指向匹配配置。</td>
+                        </tr>
+                        <tr>
+                            <td>1.14</td>
+                            <td>friend</td>
+                            <td>HttpRequest 声明 RequestParser 为友元，让解析器写入私有字段；其他使用者通过 getter 读取。</td>
+                        </tr>
+                        <tr>
+                            <td>1.15</td>
+                            <td>static 成员函数</td>
+                            <td>Utils::trim 可直接通过类名调用，不依赖对象，也没有 this。函数里的 static const hex 数组有静态存储期。</td>
+                        </tr>
+                        <tr>
+                            <td>1.16</td>
+                            <td>作用域解析符 ::</td>
+                            <td>Server::run 表示 Server 类的 run；std::string 属于标准命名空间。项目不需要自定义 namespace 才能使用这些语法。</td>
+                        </tr>
+                        <tr>
+                            <td>1.17</td>
+                            <td>前向声明</td>
+                            <td>class CgiHandler; 足以声明指针/引用，但访问成员、按值保存对象、部分模板实例化需要完整定义。ConfigParser.hpp 使用的
+                                ListenConfig/LocationConfig 目前依赖先前 include，不能把偶然 include 顺序当成好习惯。</td>
+                        </tr>
+                        <tr>
+                            <td>1.18</td>
+                            <td>头文件保护</td>
+                            <td>#ifndef / #define / #endif 防重复展开。声明放 .hpp、实现放 .cpp 有利于分离接口与实现。</td>
+                        </tr>
+                        <tr>
+                            <td>1.19</td>
+                            <td>enum</td>
+                            <td>用具名整数表示状态，例如 STAGE_HEADERS；避免用难懂的 0、1、2，但 enum 本身不执行状态转换。</td>
+                        </tr>
+                        <tr>
+                            <td>1.20</td>
+                            <td>static_cast</td>
+                            <td>明确数值/枚举转换；bytes 为正后转 size_t。负数直接转无符号会变成大数。</td>
+                        </tr>
+                        <tr>
+                            <td>1.21</td>
+                            <td>reinterpret_cast</td>
+                            <td>socket API 需要通用 sockaddr*，代码把 sockaddr_in* 转换为该指针类型；它不是在验证内存布局。</td>
+                        </tr>
+                        <tr>
+                            <td>1.22</td>
+                            <td>const_cast</td>
+                            <td>execve 的 argv 接口使用 char*，代码转换 c_str 指针的类型；不能据此修改原本不可写的内存。</td>
+                        </tr>
+                        <tr>
+                            <td>1.23</td>
+                            <td>size_t 与 ssize_t</td>
+                            <td>size_t 表示非负大小；ssize_t 能表示字节数及 -1 错误。pid_t 表示进程 ID，time_t 表示时间，socklen_t 表示地址长度。</td>
+                        </tr>
+                        <tr>
+                            <td>1.24</td>
+                            <td>sizeof 与 NULL</td>
+                            <td>sizeof 给出对象/类型占用字节数；NULL 是 C++98 常见空指针写法，不能用它判定所有 fd 无效，fd 的常见无效值是 -1。</td>
+                        </tr>
+                        <tr>
+                            <td>1.25</td>
+                            <td>短路求值</td>
+                            <td>&amp;&amp; 左边为 false 时不算右边，保护下标访问，例如先检查 value.size() 再访问 value[3]。</td>
+                        </tr>
+                        <tr>
+                            <td>1.26</td>
+                            <td>位运算</td>
+                            <td>flags 与 O_NONBLOCK 按位或来添加标志，revents &amp; POLLIN 检查标志；移位与 0xFF 用于取 IPv4 的每个字节。</td>
+                        </tr>
+                        <tr>
+                            <td>1.27</td>
+                            <td>bool 返回值语义</td>
+                            <td>false 不总等于错误：writeBody 的 false 表示尚未完成；preCheck 的 true 表示已生成响应。读函数前先确定返回值契约。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-3">
+                <h2>2. 标准库、字符串和容器</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点 / API</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>2.01</td>
+                            <td>std::string</td>
+                            <td>带长度的字节序列，可包含 NUL。HTTP 正文长度使用 size()，不能用遇到 NUL 就结束的 C 字符串长度概念。</td>
+                        </tr>
+                        <tr>
+                            <td>2.02</td>
+                            <td>size / empty / clear</td>
+                            <td>分别查询长度、是否为空、清空内容；clear 不保证释放 capacity。</td>
+                        </tr>
+                        <tr>
+                            <td>2.03</td>
+                            <td>find / rfind / find_last_of</td>
+                            <td>查子串或字符的位置；npos 表示未找到。substr(npos) 会出问题，所以先判断。</td>
+                        </tr>
+                        <tr>
+                            <td>2.04</td>
+                            <td>find_first_not_of / find_last_not_of</td>
+                            <td>找两端第一个非指定字符，Utils::trim 用它们去掉空白。</td>
+                        </tr>
+                        <tr>
+                            <td>2.05</td>
+                            <td>substr / compare</td>
+                            <td>substr 创建子串副本；compare 比较指定区间。频繁对大 body 做 substr 会增加内存和复制。</td>
+                        </tr>
+                        <tr>
+                            <td>2.06</td>
+                            <td>append / assign / +=</td>
+                            <td>append 追加，assign 替换；带长度或偏移的版本适合二进制正文，避免错误依赖字符串结束符。</td>
+                        </tr>
+                        <tr>
+                            <td>2.07</td>
+                            <td>erase / insert</td>
+                            <td>修改字符串局部；buildCgiResponse 删除 CGI 头并在开头插入 HTTP 头，可能移动正文或重新分配。</td>
+                        </tr>
+                        <tr>
+                            <td>2.08</td>
+                            <td>c_str / data</td>
+                            <td>为 C API 提供字符存储指针；c_str 以 NUL 结尾。C++98 的 data 不应假定有结束 NUL，write(data, size) 因为给了长度而合适。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2.09</td>
+                            <td>string::swap</td>
+                            <td>交换存储而非逐字节复制。与局部空字符串交换后，旧缓冲随局部对象析构释放。</td>
+                        </tr>
+                        <tr>
+                            <td>2.10</td>
+                            <td>std::vector</td>
+                            <td>连续元素容器，push_back 添加，erase 删除。扩容可能使引用/指针失效；删除会使后面的元素移动。</td>
+                        </tr>
+                        <tr>
+                            <td>2.11</td>
+                            <td>std::map</td>
+                            <td>按 key 查 value，例如 fd→Client、扩展名→解释器。find 不插入；operator[] 在 key 不存在时会插入默认 value。</td>
+                        </tr>
+                        <tr>
+                            <td>2.12</td>
+                            <td>map::insert / make_pair</td>
+                            <td>以键值对插入；_clients 用 insert(make_pair(fd, Client(...)))，因为 Client 禁止外部默认构造。</td>
+                        </tr>
+                        <tr>
+                            <td>2.13</td>
+                            <td>std::set</td>
+                            <td>唯一元素集合。seen.insert(token).second 为 false 表示已存在，用来拒绝重复配置指令。</td>
+                        </tr>
+                        <tr>
+                            <td>2.14</td>
+                            <td>iterator / const_iterator</td>
+                            <td>容器遍历位置；const_iterator 不允许通过它改元素。begin / end 构成半开区间，end 不能解引用。</td>
+                        </tr>
+                        <tr>
+                            <td>2.15</td>
+                            <td>erase 与迭代</td>
+                            <td>删除 vector 元素后当前下标指向后继元素；马上 ++i 可能跳过。Server 的清理循环有意使用 continue。</td>
+                        </tr>
+                        <tr>
+                            <td>2.16</td>
+                            <td>stringstream / ostringstream</td>
+                            <td>内存中的输入输出流，&gt;&gt; 解析 token，&lt;&lt; 构建文本，str() 取得字符串。C++98 没有 std::to_string，项目用流转换。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2.17</td>
+                            <td>std::hex</td>
+                            <td>流操纵符，让数字以十六进制解析；用于 URI %HH。不是普通字符串函数。</td>
+                        </tr>
+                        <tr>
+                            <td>2.18</td>
+                            <td>strtol</td>
+                            <td>把 C 字符串转换为 long；endPtr 指向未转换部分。先检查值范围，再转 int；前导符号等接受范围与手写纯数字解析不同。</td>
+                        </tr>
+                        <tr>
+                            <td>2.19</td>
+                            <td>numeric_limits&lt;T&gt;::max</td>
+                            <td>获取类型最大值。十进制累计前检查 result &gt; (max-digit)/10；chunk 十六进制对应除 16。</td>
+                        </tr>
+                        <tr>
+                            <td>2.20</td>
+                            <td>isdigit / isxdigit / tolower / isspace</td>
+                            <td>字符分类与大小写转换；通常应先转 unsigned char，避免负 char 参数。Tokenizer 当前直接 isspace(c)，应作为阅读边界记住。</td>
+                        </tr>
+                        <tr>
+                            <td>2.21</td>
+                            <td>ifstream / ofstream</td>
+                            <td>文件输入/输出流；离开作用域自动析构关闭，但要显式知道 close 是否失败，就要手动 close 后检查流状态。</td>
+                        </tr>
+                        <tr>
+                            <td>2.22</td>
+                            <td>is_open / write / close / rdbuf</td>
+                            <td>分别检查打开状态、按字节写、关闭、获取底层流缓冲。buffer &lt;&lt; file.rdbuf() 会将文件内容读到内存。</td>
+                        </tr>
+                        <tr>
+                            <td>2.23</td>
+                            <td>流错误状态</td>
+                            <td>if (!file) 检查失败状态，不是检查对象是否存在。close 后正常关闭的流不一定失败；关闭过程中出错才可能设置错误位。</td>
+                        </tr>
+                        <tr>
+                            <td>2.24</td>
+                            <td>cout / cerr / endl</td>
+                            <td>标准输出、标准错误、换行并刷新。频繁 endl 和调试输出可能影响压力测试性能。</td>
+                        </tr>
+                        <tr>
+                            <td>2.25</td>
+                            <td>memset / strcpy</td>
+                            <td>分别按字节初始化内存、复制 NUL 结尾字符串。creatEnvp 分配 size+1，再 strcpy，留出结束 NUL。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-4">
+                <h2>3. 配置文件与解析设计</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>3.01</td>
+                            <td>词法分析</td>
+                            <td>Tokenizer 把文本转成 token，如 server、{、root、./www、;、}。当前不是支持引号、转义等全部语法的通用配置语言。</td>
+                        </tr>
+                        <tr>
+                            <td>3.02</td>
+                            <td>语法分析</td>
+                            <td>ConfigParser 按 token 顺序构造对象；缺分号、缺花括号、未知指令都应拒绝。</td>
+                        </tr>
+                        <tr>
+                            <td>3.03</td>
+                            <td>token 流</td>
+                            <td>peek 看但不推进；consume 取并推进；match 匹配成功才推进；expect 必须成功，否则 throw。</td>
+                        </tr>
+                        <tr>
+                            <td>3.04</td>
+                            <td>语义验证</td>
+                            <td>ConfigValidator 检查合法语法组合是否有意义，例如相同 location 路径、重复方法、上传缺 POST。</td>
+                        </tr>
+                        <tr>
+                            <td>3.05</td>
+                            <td>默认值</td>
+                            <td>ServerConfig 默认 root=./www、index=index.html、body 上限 1 MiB，error_pages 初始为空；ListenConfig
+                                默认 0.0.0.0:8080，但 server 未写 listen 仍被验证拒绝。</td>
+                        </tr>
+                        <tr>
+                            <td>3.06</td>
+                            <td>覆盖与继承</td>
+                            <td>location 的 root/index 缺省时复制 server 值；body 上限运行时选取，location 显式设置则覆盖，server 不是额外硬上限。</td>
+                        </tr>
+                        <tr>
+                            <td>3.07</td>
+                            <td>显式设置标记</td>
+                            <td>clientMaxBodySizeSet 区分未配置与配置为 0；0 表示无限制，不是禁止正文。</td>
+                        </tr>
+                        <tr>
+                            <td>3.08</td>
+                            <td>重复键策略</td>
+                            <td>root 等同一块只许一次；error_page 按状态码去重；cgi 按扩展名去重；不同块或不同扩展名可独立配置。</td>
+                        </tr>
+                        <tr>
+                            <td>3.09</td>
+                            <td>验证层次不相同</td>
+                            <td>parseErrorPage 先接受 100～599，Validator 再要求 400～599；实际最终接受的是两个阶段共同允许的范围。</td>
+                        </tr>
+                        <tr>
+                            <td>3.10</td>
+                            <td>相对路径基准</td>
+                            <td>服务端配置相对于启动目录；CGI 执行前 chdir，解释器相对路径相对于脚本目录。../cgi_tester 因此与项目根目录下的 ./cgi_tester
+                                不是同一书写基准。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-5">
+                <h2>4. TCP、socket 与地址</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>4.01</td>
+                            <td>TCP 字节流</td>
+                            <td>TCP 提供有序字节传输，没有 HTTP 请求边界；一次写可能多次读，多次写也可能一次读到。</td>
+                        </tr>
+                        <tr>
+                            <td>4.02</td>
+                            <td>IP 与端口</td>
+                            <td>IP 选择地址/接口，端口区分服务端点；当前 AF_INET 使用 IPv4，SOCK_STREAM 使用流式 socket。</td>
+                        </tr>
+                        <tr>
+                            <td>4.03</td>
+                            <td>监听 fd 与客户端 fd</td>
+                            <td>listen socket 负责等连接；accept 返回新的连接 socket，后续 recv/send 用新 fd。</td>
+                        </tr>
+                        <tr>
+                            <td>4.04</td>
+                            <td>0.0.0.0 与 loopback</td>
+                            <td>0.0.0.0 监听所有本地 IPv4 接口；127.0.0.1 是本机环回。容器里的环回地址属于容器自身网络空间。</td>
+                        </tr>
+                        <tr>
+                            <td>4.05</td>
+                            <td>SO_REUSEADDR</td>
+                            <td>调整 bind 的地址复用规则，常用于服务重启；不等于允许任意两个活动服务器无条件抢占同一地址，也不实现虚拟主机。</td>
+                        </tr>
+                        <tr>
+                            <td>4.06</td>
+                            <td>backlog</td>
+                            <td>listen 的排队参数，项目使用 SOMAXCONN；不等于最大总客户端数或 worker 数量。</td>
+                        </tr>
+                        <tr>
+                            <td>4.07</td>
+                            <td>字节序</td>
+                            <td>网络数字通常采用网络字节序；ntohl 把 IPv4 整数转为主机顺序，再移位格式化四段地址。</td>
+                        </tr>
+                        <tr>
+                            <td>4.08</td>
+                            <td>地址解析</td>
+                            <td>getaddrinfo 生成可交给 bind 的 sockaddr 结果；hints 指定 IPv4/TCP，freeaddrinfo 释放返回列表。</td>
+                        </tr>
+                        <tr>
+                            <td>4.09</td>
+                            <td>getsockname</td>
+                            <td>查询 socket 本地地址；当前代码对 listenFd 查询，若监听通配地址，SERVER_NAME 可能得到 0.0.0.0，而不是请求 Host。</td>
+                        </tr>
+                        <tr>
+                            <td>4.10</td>
+                            <td>虚拟主机</td>
+                            <td>多个域名共用同一监听端点时，需要按 Host 选择配置；当前配置选择在 accept 阶段已由 listenFd 决定。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-6">
+                <h2>5. 非阻塞 I/O、poll 与事件循环</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>5.01</td>
+                            <td>文件描述符 fd</td>
+                            <td>进程内索引，能代表 socket、pipe、文件。fd=11 在不同进程或不同时刻不一定代表同一资源。</td>
+                        </tr>
+                        <tr>
+                            <td>5.02</td>
+                            <td>O_NONBLOCK</td>
+                            <td>设置后，不能立即完成的 I/O 不会按普通阻塞模式等待；它不意味着成功，也不意味着会传完所有字节。</td>
+                        </tr>
+                        <tr>
+                            <td>5.03</td>
+                            <td>fcntl</td>
+                            <td>F_GETFL 取得状态标志；F_SETFL 写回原 flags 与 O_NONBLOCK 按位或的结果，以保留其他标志。学校对平台/调用方式的限制需单独核对。</td>
+                        </tr>
+                        <tr>
+                            <td>5.04</td>
+                            <td>I/O 多路复用</td>
+                            <td>一个 poll 同时等多个 fd，再处理就绪对象。一个线程也能交替推进很多连接，不需要一连接一线程。</td>
+                        </tr>
+                        <tr>
+                            <td>5.05</td>
+                            <td>pollfd</td>
+                            <td>fd 是对象，events 是订阅，revents 是本次结果；events=0 仍可能报告错误/挂断。</td>
+                        </tr>
+                        <tr>
+                            <td>5.06</td>
+                            <td>POLLIN / POLLOUT</td>
+                            <td>分别表示可以尝试读/写；不保证应用层消息完整，也不保证任意大的操作一次完成。</td>
+                        </tr>
+                        <tr>
+                            <td>5.07</td>
+                            <td>POLLHUP</td>
+                            <td>对端关闭管道时可能仍有残留数据；CGI 输出端不能看到 HUP 就直接丢掉未读内容。</td>
+                        </tr>
+                        <tr>
+                            <td>5.08</td>
+                            <td>POLLERR / POLLNVAL</td>
+                            <td>分别表示错误条件、无效 fd；不应该继续当正常可读写对象处理。</td>
+                        </tr>
+                        <tr>
+                            <td>5.09</td>
+                            <td>poll 返回值</td>
+                            <td>正数是 revents 非零的元素数量，0 是等待超时，-1 是错误；不是字节数，也不是单独某个 fd。</td>
+                        </tr>
+                        <tr>
+                            <td>5.10</td>
+                            <td>部分读取 / 写入</td>
+                            <td>recv/read/send/write 返回正数表示本次字节数。Client._bytesSent、CgiHandler._bodyOffset 保存下一次起点。</td>
+                        </tr>
+                        <tr>
+                            <td>5.11</td>
+                            <td>EOF</td>
+                            <td>对非零长度 read/recv 请求，返回 0 通常表示流结束；它不是 HTTP 的空正文，也不是“再等等”。</td>
+                        </tr>
+                        <tr>
+                            <td>5.12</td>
+                            <td>负值与 errno</td>
+                            <td>通用系统编程会区分临时不可用等原因；本项目按课程约束，不在 read/write 后依据 errno 调整行为，负值走当前失败策略。不能推广为所有网络程序的通用做法。</td>
+                        </tr>
+                        <tr>
+                            <td>5.13</td>
+                            <td>调度公平性</td>
+                            <td>当前就绪回调通常只做一次 I/O，之后回到循环，避免单个连接连续占用；但大字符串处理仍会拖慢其他连接。</td>
+                        </tr>
+                        <tr>
+                            <td>5.14</td>
+                            <td>忙循环</td>
+                            <td>若永久订阅 POLLOUT，空闲 socket 常持续可写，poll 不断返回；应在确有待发响应时才订阅。</td>
+                        </tr>
+                        <tr>
+                            <td>5.15</td>
+                            <td>用户态登记与内核资源</td>
+                            <td>vector/map erase 只改登记；close 释放内核 fd。两者都要处理，且不要 double-close 已复用的新 fd。</td>
+                        </tr>
+                        <tr>
+                            <td>5.16</td>
+                            <td>普通文件的限制</td>
+                            <td>poll 并不能使常规磁盘访问变成异步磁盘 I/O；当前 ifstream/ofstream 操作仍在主线程中执行。</td>
+                        </tr>
+                    </table>
+                </div>
+                <p>关于 events/revents、挂断残留数据与 poll 返回值，可对照 <a
+                        href="https://man7.org/linux/man-pages/man2/poll.2.html">Linux poll 手册</a>。</p>
+            </section>
+            <section class="unit" id="book3-7">
+                <h2>6. HTTP 报文与状态机</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>6.01</td>
+                            <td>请求行</td>
+                            <td>method SP target SP version CRLF，例如 GET /images/a.png?x=1 HTTP/1.1。项目用流抽取字段并拒绝额外字段。</td>
+                        </tr>
+                        <tr>
+                            <td>6.02</td>
+                            <td>path / query</td>
+                            <td>? 前为路径，后为查询；先拆分再解码，避免 %3F 被误当原始分隔符。</td>
+                        </tr>
+                        <tr>
+                            <td>6.03</td>
+                            <td>CRLF 与头体分隔</td>
+                            <td>HTTP 行通常以 \r\n 结束，空行分隔 header 和 body；CGI 输出额外兼容 \n\n。</td>
+                        </tr>
+                        <tr>
+                            <td>6.04</td>
+                            <td>header 名称</td>
+                            <td>大小写不敏感，项目存为小写。名称仅接受字母数字与指定 token 符号，不能把空格或 / 当合法名称字符。</td>
+                        </tr>
+                        <tr>
+                            <td>6.05</td>
+                            <td>header 值</td>
+                            <td>项目拒绝 NUL、裸 CR/LF、DEL 等控制字符，允许横向 Tab；先检查再 trim。</td>
+                        </tr>
+                        <tr>
+                            <td>6.06</td>
+                            <td>Host</td>
+                            <td>HTTP/1.1 请求需有 Host；当前检查存在、非空和不可重复，但不据此选虚拟主机，也未完整解析其语法。</td>
+                        </tr>
+                        <tr>
+                            <td>6.07</td>
+                            <td>Content-Length</td>
+                            <td>正文的字节数，不包括头；不是字符串字符数，更不是整个 TCP 数据包大小。</td>
+                        </tr>
+                        <tr>
+                            <td>6.08</td>
+                            <td>chunked</td>
+                            <td>每块由十六进制大小行、数据、CRLF 构成；0 块终止。项目把 chunk 数据合并后交给 handler/CGI。</td>
+                        </tr>
+                        <tr>
+                            <td>6.09</td>
+                            <td>chunk 简化</td>
+                            <td>当前只接受纯十六进制大小和直接结束空行，未实现扩展参数和 trailer。</td>
+                        </tr>
+                        <tr>
+                            <td>6.10</td>
+                            <td>长度歧义</td>
+                            <td>同时出现 Content-Length 与 Transfer-Encoding 容易导致不同组件理解不同消息边界，当前直接 400。</td>
+                        </tr>
+                        <tr>
+                            <td>6.11</td>
+                            <td>增量解析</td>
+                            <td>输入不足时保留状态，下次继续；并不要求每次收到数据从头解析，也不自动意味着内存可恒定。</td>
+                        </tr>
+                        <tr>
+                            <td>6.12</td>
+                            <td>三种结果</td>
+                            <td>OK 是阶段成功；INCOMPLETE 表示等数据；ERROR 才是拒绝。PARSE_COMPLETE 表示整个请求完成。</td>
+                        </tr>
+                        <tr>
+                            <td>6.13</td>
+                            <td>请求上限</td>
+                            <td>请求行 8192、headers 32768、chunk 大小行 1024 字节；body 限制由配置决定。限制的是不同部分，不应混成一个数。</td>
+                        </tr>
+                        <tr>
+                            <td>6.14</td>
+                            <td>keep-alive</td>
+                            <td>一条 TCP 连接顺序处理多个请求。当前 HTTP/1.1 默认开启，Connection 值恰为 close 时关闭，未完整解析逗号分隔 token 列表。</td>
+                        </tr>
+                        <tr>
+                            <td>6.15</td>
+                            <td>pipelining</td>
+                            <td>客户端在前一响应结束前发送后续请求；服务器保留多余 readBuffer 并按顺序响应，当前不并行处理同一连接的请求。</td>
+                        </tr>
+                        <tr>
+                            <td>6.16</td>
+                            <td>响应序列化</td>
+                            <td>状态行 + 响应头 + 空行 + 正文。HttpResponse 保存结构化结果，getResponse 才转成可发送字节。</td>
+                        </tr>
+                        <tr>
+                            <td>6.17</td>
+                            <td>MIME 类型</td>
+                            <td>Content-Type 告诉客户端如何理解正文；getMimeType 根据扩展名映射，不识别则 application/octet-stream。</td>
+                        </tr>
+                        <tr>
+                            <td>6.18</td>
+                            <td>405 与 501</td>
+                            <td>405 表示当前资源不允许该方法，带 Allow；501 表示普通分发没有实现该方法。preCheck 在前，所以 HEAD 在只允许 GET 的 location 先得到
+                                405。</td>
+                        </tr>
+                        <tr>
+                            <td>6.19</td>
+                            <td>403 / 404 / 500</td>
+                            <td>分别表达拒绝访问、未找到、内部失败；当前不查 errno，stat 失败常统一 404，不是精细错误原因分类。</td>
+                        </tr>
+                        <tr>
+                            <td>6.20</td>
+                            <td>413 / 414 / 431 / 505</td>
+                            <td>正文太大、请求目标/请求行限制、header 太大、版本不支持；本文按项目实际返回路径解释。</td>
+                        </tr>
+                        <tr>
+                            <td>6.21</td>
+                            <td>200 与 201</td>
+                            <td>普通操作成功通常 200，新建资源 201；当前上传按文件是否原先存在判断。</td>
+                        </tr>
+                        <tr>
+                            <td>6.22</td>
+                            <td>重定向</td>
+                            <td>301/302/303/307/308 通过 Location 告诉客户端下一地址；307/308 的标准用途保留方法，但项目只是生成这些状态与 Location。</td>
+                        </tr>
+                        <tr>
+                            <td>6.23</td>
+                            <td>重复响应头</td>
+                            <td>HttpResponse 用 map，每个完全相同名称仅一个值；CGI 头以文本保留，可保留多条 Set-Cookie。两条生成路径的数据结构不同。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-8">
+                <h2>7. 路由、文件系统、上传与安全</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>7.01</td>
+                            <td>最长路径前缀</td>
+                            <td>更具体 location 优先，还要检查路径边界；/upload 与 /uploads 不应混淆。</td>
+                        </tr>
+                        <tr>
+                            <td>7.02</td>
+                            <td>URL 与磁盘路径</td>
+                            <td>URL 是客户端地址，root 是服务器目录；buildPath 将 location 前缀替换成 root。当前语义不能直接等同 NGINX 的 root 指令。</td>
+                        </tr>
+                        <tr>
+                            <td>7.03</td>
+                            <td>stat</td>
+                            <td>读取文件元数据，成功返回 0；S_ISREG / S_ISDIR 根据 st_mode 判断普通文件或目录。stat 默认跟随符号链接。</td>
+                        </tr>
+                        <tr>
+                            <td>7.04</td>
+                            <td>index</td>
+                            <td>目录请求优先查配置的索引文件；当前索引文件被 handleGet 当静态文件读取，不会因此重新进入 CGI 扩展名分发。</td>
+                        </tr>
+                        <tr>
+                            <td>7.05</td>
+                            <td>autoindex</td>
+                            <td>没有可用索引时按配置生成目录 HTML；opendir/readdir/closedir 管理目录流。</td>
+                        </tr>
+                        <tr>
+                            <td>7.06</td>
+                            <td>尾斜杠</td>
+                            <td>目录 URL 的 / 影响客户端相对链接解析；301 补 / 后由客户端重新请求，并保留 query。</td>
+                        </tr>
+                        <tr>
+                            <td>7.07</td>
+                            <td>URL 编解码</td>
+                            <td>decodeUri 将 %HH 变字节，urlEncodePath 把非安全字节变 %HH。不是加密，中文通常以 UTF-8 的每个字节编码。</td>
+                        </tr>
+                        <tr>
+                            <td>7.08</td>
+                            <td>HTML 转义</td>
+                            <td>&amp;、&lt;、&gt;、引号有语法意义，显示文件名时必须转义，防文件名变成标签；链接 URL 编码与显示文字转义不是同一函数。</td>
+                        </tr>
+                        <tr>
+                            <td>7.09</td>
+                            <td>父目录穿越</td>
+                            <td>解码后按路径段拒绝 ..，防 %2e%2e 绕过普通文本判断；不要反复解码产生不同解释。</td>
+                        </tr>
+                        <tr>
+                            <td>7.10</td>
+                            <td>NUL 风险</td>
+                            <td>std::string 可含 NUL，但 C 文件 API 把 NUL 当结尾，容易出现“校验一个路径，实际访问另一个路径”；%00 和上传控制字符需要拒绝。</td>
+                        </tr>
+                        <tr>
+                            <td>7.11</td>
+                            <td>文件名安全</td>
+                            <td>isSafeFilename 拒绝空值、.、..、/、反斜杠、控制字符；普通空格允许。filename 不是任意路径。</td>
+                        </tr>
+                        <tr>
+                            <td>7.12</td>
+                            <td>multipart</td>
+                            <td>一个正文含多个 part，各自有头和数据；boundary 分隔它们，Content-Disposition 提供 name 和 filename。</td>
+                        </tr>
+                        <tr>
+                            <td>7.13</td>
+                            <td>boundary 参数</td>
+                            <td>可带引号，有长度限制，重复/缺失/破损引号返回错误；当前按分号分参数，是简化解析，不是完整 MIME 参数解析器。</td>
+                        </tr>
+                        <tr>
+                            <td>7.14</td>
+                            <td>解析先于副作用</td>
+                            <td>先解析完整 multipart 再写文件能防语法破损时提前写；但所有文件名未预先整体校验，仍不等于原子提交。</td>
+                        </tr>
+                        <tr>
+                            <td>7.15</td>
+                            <td>upload_store</td>
+                            <td>只在 multipart 分支决定落盘目录；普通 POST 用 buildPath，GET 下载还要配置独立可访问路由。</td>
+                        </tr>
+                        <tr>
+                            <td>7.16</td>
+                            <td>文件写入检查</td>
+                            <td>write 和 close 均可能失败。close 成功不等于已经做了断电持久化保证；项目没有 fsync。</td>
+                        </tr>
+                        <tr>
+                            <td>7.17</td>
+                            <td>DELETE</td>
+                            <td>std::remove 按实际路径删除，当前先确认普通文件；方法权限与路由限制不是登录鉴权。</td>
+                        </tr>
+                        <tr>
+                            <td>7.18</td>
+                            <td>符号链接与竞态</td>
+                            <td>stat 通过后文件可能被替换；符号链接也可能指向根目录外。字符串路径检查不能独自解决这两种情况。</td>
+                        </tr>
+                        <tr>
+                            <td>7.19</td>
+                            <td>二进制上传</td>
+                            <td>write(data, size) 保留正文中 NUL 等字节；不能用文本行读取方式代替所有二进制传输。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-9">
+                <h2>8. CGI、进程、管道与信号</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>8.01</td>
+                            <td>CGI 全称与边界</td>
+                            <td>Common Gateway Interface，是 Web 服务器与外部程序交换请求/响应的约定；不是 Python 专属协议。</td>
+                        </tr>
+                        <tr>
+                            <td>8.02</td>
+                            <td>fork</td>
+                            <td>创建子进程，父进程得到子 PID，子进程得到 0，失败为 -1；父子从同一调用之后走不同分支。</td>
+                        </tr>
+                        <tr>
+                            <td>8.03</td>
+                            <td>写时复制</td>
+                            <td>fork 后内存通常通过 copy-on-write 共享物理页，写入才可能复制；不能简单假定立刻完整复制或永远零成本。</td>
+                        </tr>
+                        <tr>
+                            <td>8.04</td>
+                            <td>pipe</td>
+                            <td>返回读端 [0] 和写端 [1]，是一条单向字节通道；项目用两条管道完成请求输入和响应输出。</td>
+                        </tr>
+                        <tr>
+                            <td>8.05</td>
+                            <td>关闭多余管道端</td>
+                            <td>父子进程都继承 fd；不关闭多余写端会让读端迟迟看不到 EOF，还可能延长其他连接寿命。</td>
+                        </tr>
+                        <tr>
+                            <td>8.06</td>
+                            <td>dup2</td>
+                            <td>让指定编号引用源 fd 对应的打开对象；stdin=0、stdout=1。复制后应关闭原始多余 fd。</td>
+                        </tr>
+                        <tr>
+                            <td>8.07</td>
+                            <td>阻塞 CGI 与非阻塞父进程</td>
+                            <td>项目只将父进程使用的输入写端、输出读端设非阻塞；CGI 的 stdin/stdout 可以保持普通阻塞流接口。</td>
+                        </tr>
+                        <tr>
+                            <td>8.08</td>
+                            <td>execve</td>
+                            <td>用新程序替换当前子进程映像，成功不返回；不会另外再创建一个 PID，也不会像 shell 那样替你解析整条命令。</td>
+                        </tr>
+                        <tr>
+                            <td>8.09</td>
+                            <td>argv / envp</td>
+                            <td>都是以 NULL 结尾的字符指针数组；argv 放参数，envp 放 KEY=VALUE。creatEnvp 的拼写是源码现名。</td>
+                        </tr>
+                        <tr>
+                            <td>8.10</td>
+                            <td>环境变量</td>
+                            <td>为 CGI 提供 method、query、body 长度和客户端信息；HTTP 头转换成 HTTP_XXX。环境是启动时快照，不是共享 map。</td>
+                        </tr>
+                        <tr>
+                            <td>8.11</td>
+                            <td>chdir</td>
+                            <td>改当前进程工作目录；在子进程里调用不改变父进程工作目录。relative.py 因此能打开脚本旁边的 data.txt。</td>
+                        </tr>
+                        <tr>
+                            <td>8.12</td>
+                            <td>shebang</td>
+                            <td>#!/usr/bin/python3 指定解释器；#!/usr/bin/env python3 通过 env 和 PATH 查找。当前服务器显式 execve 解释器时，脚本
+                                shebang 不负责选择解释器。</td>
+                        </tr>
+                        <tr>
+                            <td>8.13</td>
+                            <td>execve 与 PATH</td>
+                            <td>execve 使用传入路径，不自动搜索 PATH；相对路径受 chdir 影响。绝对解释器路径更易理解。</td>
+                        </tr>
+                        <tr>
+                            <td>8.14</td>
+                            <td>stdin / stdout / stderr</td>
+                            <td>CGI 从 stdin 读正文，stdout 写 CGI 头和正文；stderr 用于异常/日志，当前继承 webserv 的错误输出。</td>
+                        </tr>
+                        <tr>
+                            <td>8.15</td>
+                            <td>_exit 与 return</td>
+                            <td>子进程执行失败时 _exit 立即结束，不经过普通 C++ 栈析构或 stdio 常规退出刷新；它确实是函数，是否允许是课程清单问题。</td>
+                        </tr>
+                        <tr>
+                            <td>8.16</td>
+                            <td>waitpid + WNOHANG</td>
+                            <td>立即检查指定子进程；0 表示还没结束，PID 表示已获取状态，-1 表示错误。避免常规等待阻塞整个事件循环。</td>
+                        </tr>
+                        <tr>
+                            <td>8.17</td>
+                            <td>僵尸进程</td>
+                            <td>子进程退出后仍需父进程 wait 回收状态；仅关管道不等于已经回收。</td>
+                        </tr>
+                        <tr>
+                            <td>8.18</td>
+                            <td>退出状态解码</td>
+                            <td>waitpid 写出的 status 不是直接的退出码；先 WIFEXITED，再 WEXITSTATUS。项目要求正常退出且码为 0。</td>
+                        </tr>
+                        <tr>
+                            <td>8.19</td>
+                            <td>kill 与 SIGKILL</td>
+                            <td>kill 发送信号；SIGKILL 强制终止，之后仍要 waitpid。当前 killChild 使用 waitpid(...,0)，可能短暂阻塞。</td>
+                        </tr>
+                        <tr>
+                            <td>8.20</td>
+                            <td>SIGINT</td>
+                            <td>常由 Ctrl-C 产生；handleSignal 仅设 g_running=0，让主流程清理。</td>
+                        </tr>
+                        <tr>
+                            <td>8.21</td>
+                            <td>SIGPIPE</td>
+                            <td>向读端已关闭的 pipe/socket 写入可能产生；忽略该信号后，代码可根据写操作返回值处理失败。</td>
+                        </tr>
+                        <tr>
+                            <td>8.22</td>
+                            <td>sig_atomic_t / volatile / extern</td>
+                            <td>sig_atomic_t 用于信号回调可安全访问的简单标量；volatile 要求保留相应访问语义；extern 声明 main.cpp 中的同一个变量。volatile
+                                不是线程同步工具。</td>
+                        </tr>
+                        <tr>
+                            <td>8.23</td>
+                            <td>信号回调限制</td>
+                            <td>不应在回调里随意用复杂 C++ 容器、流和 delete；当前只改简单标志，让正常流程退出。</td>
+                        </tr>
+                        <tr>
+                            <td>8.24</td>
+                            <td>CGI 完成的两个条件</td>
+                            <td>输出 EOF 与子进程退出是不同事件；可能先关闭 stdout 后继续运行，也可能退出时管道仍有未读数据。</td>
+                        </tr>
+                        <tr>
+                            <td>8.25</td>
+                            <td>CGI Status</td>
+                            <td>CGI 的 Status: 201 Created 要转换为 HTTP/1.1 201 Created 状态行；不能原样当普通头就假定客户端收到 201。</td>
+                        </tr>
+                        <tr>
+                            <td>8.26</td>
+                            <td>响应长度与连接管理</td>
+                            <td>当前服务器完整拿到正文后重新算 Content-Length，并决定 Connection；CGI 只输出正文和相关响应信息。</td>
+                        </tr>
+                        <tr>
+                            <td>8.27</td>
+                            <td>CGI 输出限制</td>
+                            <td>128 MiB 限制的是该 CGI 累积输出（含 CGI 头），不是整个服务器内存，也不是输入限制。</td>
+                        </tr>
+                        <tr>
+                            <td>8.28</td>
+                            <td>流式 CGI</td>
+                            <td>一边读 CGI 输出一边发给客户端，配合有界缓冲与背压；当前没有实现，仍先收完整输出。</td>
+                        </tr>
+                        <tr>
+                            <td>8.29</td>
+                            <td>背压与双向死锁</td>
+                            <td>CGI 可能边读 stdin 边写 stdout；若服务器只顾写输入不读输出，两边有限管道都可能塞满。统一 poll 同时推进两个方向。</td>
+                        </tr>
+                    </table>
+                </div>
+                <p>execve 的替换语义、参数、环境和解释器规则可对照 <a href="https://man7.org/linux/man-pages/man2/execve.2.html">Linux
+                        execve 手册</a>。</p>
+            </section>
+            <section class="unit" id="book3-10">
+                <h2>9. 内存、生命周期与错误处理</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>9.01</td>
+                            <td>栈与堆</td>
+                            <td>局部 RequestHandler 随作用域结束；new CgiHandler 在堆上，需要 Server 在完成/失败/断连路径 delete。</td>
+                        </tr>
+                        <tr>
+                            <td>9.02</td>
+                            <td>RAII</td>
+                            <td>用对象寿命管理资源；ifstream 自动关闭是例子。仅把 fd 放在 int 成员里不会自动获得 RAII。</td>
+                        </tr>
+                        <tr>
+                            <td>9.03</td>
+                            <td>所有权与借用</td>
+                            <td>_cgiHandlers 管理 CGI 寿命，_cgiFds 只是索引；RequestHandler 借用配置。知道谁负责销毁比只记指针语法重要。</td>
+                        </tr>
+                        <tr>
+                            <td>9.04</td>
+                            <td>throw / try / catch</td>
+                            <td>throw 中断正常路径，寻找匹配 catch；配置/启动失败到 main，CGI 启动错误被 tryStartCgi 捕获并转为单次 500。</td>
+                        </tr>
+                        <tr>
+                            <td>9.05</td>
+                            <td>栈展开</td>
+                            <td>异常传播时已经构造完成的局部对象析构，但裸 new 指针不会自动 delete；startCgi 的 catch 清理后用 throw; 重新抛出。</td>
+                        </tr>
+                        <tr>
+                            <td>9.06</td>
+                            <td>return 与错误</td>
+                            <td>return 可以合理表达失败、未完成或结束本次回调；不能统一把所有提前 return 改为 throw，否则一个坏请求可能终止整个服务。</td>
+                        </tr>
+                        <tr>
+                            <td>9.07</td>
+                            <td>幂等清理</td>
+                            <td>fd 关闭后置 -1，让后续 closeInput 不重复关闭；但服务器索引也要同步移除。</td>
+                        </tr>
+                        <tr>
+                            <td>9.08</td>
+                            <td>悬空指针</td>
+                            <td>delete CGI 后不能再读它的 getXXX；从 map/vector 取得的引用也要注意对应元素是否已被删除。</td>
+                        </tr>
+                        <tr>
+                            <td>9.09</td>
+                            <td>峰值内存</td>
+                            <td>关注同时存在的正文、响应、复制临时量、子进程及并发数；吞吐正常不代表峰值足够低。</td>
+                        </tr>
+                        <tr>
+                            <td>9.10</td>
+                            <td>swap 与容量</td>
+                            <td>降低交接复制并释放旧缓冲，但字符串增长、原地 insert 和解析 assign 仍可能分配。</td>
+                        </tr>
+                        <tr>
+                            <td>9.11</td>
+                            <td>OOM 与 137</td>
+                            <td>shell 常以 128+信号号表示信号退出，137 对应 SIGKILL；单靠 137 不能证明 OOM，你之前结合 memory.events 的 oom_kill
+                                增长才有证据。</td>
+                        </tr>
+                        <tr>
+                            <td>9.12</td>
+                            <td>RAM 与 swap</td>
+                            <td>swap 把部分内存页换到磁盘，可能缓解压力但更慢；扩大 swap 不等于修复无界缓存设计。</td>
+                        </tr>
+                        <tr>
+                            <td>9.13</td>
+                            <td>并发与总量</td>
+                            <td>每个请求受限不代表总内存受限；20 个大请求与单个请求是不同资源压力。</td>
+                        </tr>
+                        <tr>
+                            <td>9.14</td>
+                            <td>时间源与超时</td>
+                            <td>time(NULL) 提供墙钟秒数，可能受时钟调整影响；当前无活动计时不是高精度单调时钟设计。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-11">
+                <h2>10. Cookie、Session 和 Python CGI</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>10.01</td>
+                            <td>Cookie</td>
+                            <td>服务器用 Set-Cookie 设置，客户端之后用 Cookie 携带；curl -c 保存 Cookie 文件，-b 读取并发送。</td>
+                        </tr>
+                        <tr>
+                            <td>10.02</td>
+                            <td>Session</td>
+                            <td>服务器保存状态，用 Cookie 中的 ID 找到它；当前文件只保存访问次数，ID 不是访问次数本身。</td>
+                        </tr>
+                        <tr>
+                            <td>10.03</td>
+                            <td>SimpleCookie / load</td>
+                            <td>Python 标准库解析 Cookie，值通过 cookies[name].value 获取，格式错误可捕获 CookieError。</td>
+                        </tr>
+                        <tr>
+                            <td>10.04</td>
+                            <td>Path / HttpOnly / SameSite</td>
+                            <td>Path 限制发送路径范围；HttpOnly 限制脚本读取 Cookie；SameSite=Lax 限制部分跨站发送。它们不会自动提供登录、TLS 或完整 CSRF 防护。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>10.05</td>
+                            <td>secrets.token_hex(16)</td>
+                            <td>生成 16 个随机字节并编码为 32 位十六进制 ID；is_valid_session_id 检查长度与字符范围。</td>
+                        </tr>
+                        <tr>
+                            <td>10.06</td>
+                            <td>Python import</td>
+                            <td>引入模块；os 管理环境和文件路径，sys 管标准流，time 取时间，secrets 提供安全随机数。</td>
+                        </tr>
+                        <tr>
+                            <td>10.07</td>
+                            <td>__file__ / abspath / dirname / join</td>
+                            <td>从脚本位置推导项目根目录与 session_data；join 拼路径，避免手工遗漏分隔符。</td>
+                        </tr>
+                        <tr>
+                            <td>10.08</td>
+                            <td>os.environ.get</td>
+                            <td>读取 CGI 环境变量，不存在则返回默认值；如 HTTP_COOKIE、QUERY_STRING。</td>
+                        </tr>
+                        <tr>
+                            <td>10.09</td>
+                            <td>makedirs / listdir</td>
+                            <td>建目录与列目录；exist_ok=True 允许已经存在。</td>
+                        </tr>
+                        <tr>
+                            <td>10.10</td>
+                            <td>isfile / exists / islink / getmtime / remove</td>
+                            <td>检查会话文件、跳过清理符号链接、读最近修改时间、删除过期文件；这些检查不提供原子锁。</td>
+                        </tr>
+                        <tr>
+                            <td>10.11</td>
+                            <td>惰性过期清理</td>
+                            <td>当前 session.py 每次请求扫描过期文件，超过 30 分钟才删除；无请求时不会自动运行清理。</td>
+                        </tr>
+                        <tr>
+                            <td>10.12</td>
+                            <td>with open</td>
+                            <td>Python 上下文管理器保证块退出时关闭文件；r 读取，w 覆盖写入，读取后 strip 再 int 转访问次数。</td>
+                        </tr>
+                        <tr>
+                            <td>10.13</td>
+                            <td>try / except / finally</td>
+                            <td>捕获 CookieError、OSError、ValueError；finally 常用于测试器关闭连接，发生异常也会执行。</td>
+                        </tr>
+                        <tr>
+                            <td>10.14</td>
+                            <td>bytes 与 str</td>
+                            <td>bytes 是字节，str 是文本；len(中文字符串) 不等于 UTF-8 字节数。post.py 使用文本 stdin.read，适合演示，不应当作任意二进制正文处理模板。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>10.15</td>
+                            <td>stdout.write / print</td>
+                            <td>输出 CGI 头后必须有空行；print 默认追加换行，stdout.write 更便于控制 CRLF。</td>
+                        </tr>
+                        <tr>
+                            <td>10.16</td>
+                            <td>顶层脚本</td>
+                            <td>Python CGI 的大部分逻辑直接从文件顶层执行，不一定写在 def 中；完整索引同时列出显式 def 和脚本入口。</td>
+                        </tr>
+                        <tr>
+                            <td>10.17</td>
+                            <td>Session 并发更新</td>
+                            <td>两个 CGI 同时读同一计数再写可能丢失一次增加；单线程 Server 不意味着 CGI 子进程不会并发。</td>
+                        </tr>
+                    </table>
+                </div>
+                <p>Cookie 解析 API 可参考 <a href="https://docs.python.org/3/library/http.cookies.html">Python http.cookies
+                        文档</a>。</p>
+            </section>
+            <section class="unit" id="book3-12">
+                <h2>11. Makefile、编译和链接</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>11.01</td>
+                            <td>预处理、编译、链接</td>
+                            <td>#include 展开声明；每个 .cpp 编成 .o；链接把目标文件组合成 webserv。头文件不是独立运行的程序。</td>
+                        </tr>
+                        <tr>
+                            <td>11.02</td>
+                            <td>CXX / CPPFLAGS / CXXFLAGS</td>
+                            <td>分别为编译器、预处理选项、C++ 编译选项；-Iinclude 找头文件，-DWEBSERV_DEBUG 定义宏。</td>
+                        </tr>
+                        <tr>
+                            <td>11.03</td>
+                            <td>-std=c++98</td>
+                            <td>限定语言标准，不能随意用 auto 类型推导、unique_ptr、lambda 等现代 C++ 特性；Python lambda 与此无关。</td>
+                        </tr>
+                        <tr>
+                            <td>11.04</td>
+                            <td>-g / -Wall / -Wextra / -Werror</td>
+                            <td>生成调试信息、开启警告、额外警告、警告视为错误；不表示已经证明程序没有运行时问题。</td>
+                        </tr>
+                        <tr>
+                            <td>11.05</td>
+                            <td>target: prerequisites</td>
+                            <td>目标依赖前置文件；当目标不存在或依赖更新时执行 recipe。recipe 开头通常需要 Tab。</td>
+                        </tr>
+                        <tr>
+                            <td>11.06</td>
+                            <td>= 与 ?=</td>
+                            <td>当前 = 是递归展开变量赋值；DEBUG ?= 0 只在尚未设置时给默认值，可用 make DEBUG=1 覆盖。</td>
+                        </tr>
+                        <tr>
+                            <td>11.07</td>
+                            <td>patsubst</td>
+                            <td>模式替换 src/%.cpp 为 .build/%.o，保留 config/ 等子目录，减少不同目录同名文件冲突。</td>
+                        </tr>
+                        <tr>
+                            <td>11.08</td>
+                            <td>$(OBJS:.o=.d)</td>
+                            <td>后缀替换，得到每个目标文件对应的依赖文件。</td>
+                        </tr>
+                        <tr>
+                            <td>11.09</td>
+                            <td>模式规则与 %</td>
+                            <td>.build/%.o: src/%.cpp 表示一组相同构建方式，不必为每个源文件手写命令。</td>
+                        </tr>
+                        <tr>
+                            <td>11.10</td>
+                            <td>$@ / $&lt; / dir</td>
+                            <td>$@ 为目标路径，$&lt; 为第一个依赖；$(dir $@) 得目录，mkdir -p 先建输出目录。</td>
+                        </tr>
+                        <tr>
+                            <td>11.11</td>
+                            <td>-c 与 -o</td>
+                            <td>-c 只编译不链接，-o 指定输出；最终链接命令没有 -c。</td>
+                        </tr>
+                        <tr>
+                            <td>11.12</td>
+                            <td>-MMD / -MP</td>
+                            <td>-MMD 产生用户头文件依赖 .d；-MP 给依赖头文件添加空目标，缓解删除/改名后旧依赖报错。</td>
+                        </tr>
+                        <tr>
+                            <td>11.13</td>
+                            <td>-include $(DEPS)</td>
+                            <td>读入自动生成依赖，首次不存在时也不报错；放在默认目标之后可避免干扰默认目标选择。</td>
+                        </tr>
+                        <tr>
+                            <td>11.14</td>
+                            <td>.PHONY</td>
+                            <td>声明 all/clean/re 等逻辑目标，避免同名文件让 make 误以为无需执行。</td>
+                        </tr>
+                        <tr>
+                            <td>11.15</td>
+                            <td>clean / fclean / re</td>
+                            <td>分别删除构建目录、额外删除可执行文件、先清后建；re 使用 $(MAKE) 递归调用并传 DEBUG。</td>
+                        </tr>
+                        <tr>
+                            <td>11.16</td>
+                            <td>@ 与续行反斜杠</td>
+                            <td>@ 不回显该条 recipe 命令，不屏蔽程序输出；反斜杠把变量列表分多行写。</td>
+                        </tr>
+                        <tr>
+                            <td>11.17</td>
+                            <td>DEBUG_LOG 宏</td>
+                            <td>do { ... } while (0) 让宏在语法上像单条语句；-DWEBSERV_DEBUG=0/1 控制日志。</td>
+                        </tr>
+                        <tr>
+                            <td>11.18</td>
+                            <td>修改编译选项</td>
+                            <td>make 通常按文件时间戳判断，不自动知道 DEBUG 值改变；从旧目标切换日志模式时 make re DEBUG=1 更确定。</td>
+                        </tr>
+                    </table>
+                </div>
+                <p>这些条目直接对应当前 Makefile。没有增加 build system 或改变工程设置。</p>
+            </section>
+            <section class="unit" id="book3-13">
+                <h2>12. 测试、终端和部署环境</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>12.01</td>
+                            <td>黑盒测试</td>
+                            <td>从 socket/curl 发送请求检查响应，不直接调用私有 C++ 方法；与真实客户端的交互路径相同。</td>
+                        </tr>
+                        <tr>
+                            <td>12.02</td>
+                            <td>正常、边界、畸形输入</td>
+                            <td>除正常 GET，还需恰好上限、超过 1 字节、缺 CRLF、重复头、坏 chunk、坏 multipart 等。</td>
+                        </tr>
+                        <tr>
+                            <td>12.03</td>
+                            <td>回归测试</td>
+                            <td>修复一处后重测此前通过的行为，尤其解析、keep-alive、CGI 和超时相互影响的路径。</td>
+                        </tr>
+                        <tr>
+                            <td>12.04</td>
+                            <td>curl 常用参数</td>
+                            <td>-i 显示响应头；-X 选方法；-H 加头；--data 发正文；-F 生成 multipart；--max-time 限制整个请求等待。</td>
+                        </tr>
+                        <tr>
+                            <td>12.05</td>
+                            <td>原始 socket 测试</td>
+                            <td>socket/create_connection、connect、sendall、recv、settimeout、close 可手写不合法
+                                HTTP；浏览器通常不会帮你构造这些输入。</td>
+                        </tr>
+                        <tr>
+                            <td>12.06</td>
+                            <td>分段输入测试</td>
+                            <td>send_parts 配合 sleep 拆开 CRLF 或 body，检验 RequestState 是否正确保存进度。</td>
+                        </tr>
+                        <tr>
+                            <td>12.07</td>
+                            <td>并发压力测试</td>
+                            <td>ThreadPoolExecutor / submit / as_completed，或
+                                threading.Thread/start/join，用客户端并发制造负载；服务器本身仍是单事件循环。</td>
+                        </tr>
+                        <tr>
+                            <td>12.08</td>
+                            <td>http.client</td>
+                            <td>HTTPConnection.request / getresponse 封装协议；response.read(65536) 分块消费正文，降低测试器自己的峰值内存。</td>
+                        </tr>
+                        <tr>
+                            <td>12.09</td>
+                            <td>断言与现象</td>
+                            <td>status==200、正文长度匹配、响应格式正确是不同检查。收到 EOF/500 要结合服务器日志判断，而不是直接归因网络或内存。</td>
+                        </tr>
+                        <tr>
+                            <td>12.10</td>
+                            <td>heredoc</td>
+                            <td>python3 - &lt;&lt;&#x27;PY&#x27; 从终端多行文本读取脚本；引号可避免 shell 展开。复制时保留缩进，不要把 Markdown
+                                的反斜杠转义混入代码。</td>
+                        </tr>
+                        <tr>
+                            <td>12.11</td>
+                            <td>输出重定向</td>
+                            <td>&gt; 写文件，&gt;&gt; 追加，2&gt; 重定向 stderr，2&gt;&amp;1 让 stderr 指向当时 stdout；CGI stderr
+                                会沿继承关系进入该目标。</td>
+                        </tr>
+                        <tr>
+                            <td>12.12</td>
+                            <td>后台与进程</td>
+                            <td>&amp; 后台运行，$! 得后台 PID，wait 等结束，$? 看上一命令状态；PID 与客户端 fd 是不同编号体系。</td>
+                        </tr>
+                        <tr>
+                            <td>12.13</td>
+                            <td>/proc 与 cgroup</td>
+                            <td>/proc/PID/fd 用于观察进程 fd；memory.events 的 oom_kill 增量帮助定位 OOM。macOS 本机与 Linux 容器工具并不相同。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>12.14</td>
+                            <td>Docker 网络</td>
+                            <td>容器 loopback 不等于宿主机 loopback；宿主机访问通常需要发布端口并监听容器可达接口。</td>
+                        </tr>
+                        <tr>
+                            <td>12.15</td>
+                            <td>Fedora 原生运行</td>
+                            <td>目标是学校 Linux 上 make 后运行；macOS 静态分析不等于 Fedora 实测。解释器位置、测试二进制架构和权限仍需实机确认。</td>
+                        </tr>
+                        <tr>
+                            <td>12.16</td>
+                            <td>测试器的局限</td>
+                            <td>test_keepalive 第一条响应只 recv 一次，不是完整消息分帧器；test_partial_request 没有请求
+                                close，可能等服务器空闲超时才结束。不要把测试脚本本身当协议标准。</td>
+                        </tr>
+                        <tr>
+                            <td>12.17</td>
+                            <td>Git 与运行数据</td>
+                            <td>代码、配置和文档适合提交；.build、二进制、会话数据和临时测试输出应按项目需要忽略。复习笔记记录快照，后续代码改变可能使行号过期。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-14">
+                <h2>13. 系统函数速查：输入、返回与职责</h2>
+                <p>这一表列当前 C++ 核心显式使用的主要系统/C 接口。括号是参数含义摘要，不是复制完整平台函数声明。具体调用位置还可在函数索引的“库/系统调用”中查到。</p>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>函数 / 相关头文件</th>
+                            <th>输入与返回</th>
+                            <th>项目用途</th>
+                        </tr>
+                        <tr>
+                            <td>13.01</td>
+                            <td>socket / sys/socket.h</td>
+                            <td>family,type,protocol → fd 或 -1</td>
+                            <td>创建 IPv4 TCP 监听 fd</td>
+                        </tr>
+                        <tr>
+                            <td>13.02</td>
+                            <td>setsockopt / sys/socket.h</td>
+                            <td>fd,层级,选项,值指针,值长度 → 0/-1</td>
+                            <td>设置 SO_REUSEADDR</td>
+                        </tr>
+                        <tr>
+                            <td>13.03</td>
+                            <td>bind / sys/socket.h</td>
+                            <td>fd,地址,地址长度 → 0/-1</td>
+                            <td>绑定监听地址</td>
+                        </tr>
+                        <tr>
+                            <td>13.04</td>
+                            <td>listen / sys/socket.h</td>
+                            <td>fd,backlog → 0/-1</td>
+                            <td>进入监听状态</td>
+                        </tr>
+                        <tr>
+                            <td>13.05</td>
+                            <td>accept / sys/socket.h</td>
+                            <td>listenFd,对端地址输出,长度输出 → clientFd/-1</td>
+                            <td>接受连接</td>
+                        </tr>
+                        <tr>
+                            <td>13.06</td>
+                            <td>getsockname / sys/socket.h</td>
+                            <td>fd,本地地址输出,长度输出 → 0/-1</td>
+                            <td>查询监听地址</td>
+                        </tr>
+                        <tr>
+                            <td>13.07</td>
+                            <td>recv / sys/socket.h</td>
+                            <td>fd,缓冲区,最大字节数,flags → 字节数/0/-1</td>
+                            <td>接收 HTTP</td>
+                        </tr>
+                        <tr>
+                            <td>13.08</td>
+                            <td>send / sys/socket.h</td>
+                            <td>fd,待发送地址,长度,flags → 字节数/-1</td>
+                            <td>发送 HTTP</td>
+                        </tr>
+                        <tr>
+                            <td>13.09</td>
+                            <td>getaddrinfo / netdb.h</td>
+                            <td>host,服务字符串,hints,结果输出 → 0 或错误码</td>
+                            <td>生成 bind 地址</td>
+                        </tr>
+                        <tr>
+                            <td>13.10</td>
+                            <td>freeaddrinfo / netdb.h</td>
+                            <td>结果列表 → 无返回值</td>
+                            <td>释放地址解析结果</td>
+                        </tr>
+                        <tr>
+                            <td>13.11</td>
+                            <td>ntohl / netinet/in.h</td>
+                            <td>32 位网络序数值 → 主机序数值</td>
+                            <td>IPv4 文本格式化</td>
+                        </tr>
+                        <tr>
+                            <td>13.12</td>
+                            <td>fcntl / fcntl.h</td>
+                            <td>fd,命令,可选参数 → 依命令而定/-1</td>
+                            <td>获取/设置非阻塞标志</td>
+                        </tr>
+                        <tr>
+                            <td>13.13</td>
+                            <td>poll / poll.h</td>
+                            <td>pollfd 数组,个数,等待毫秒数 → 就绪元素数/0/-1</td>
+                            <td>事件循环</td>
+                        </tr>
+                        <tr>
+                            <td>13.14</td>
+                            <td>close / unistd.h</td>
+                            <td>fd → 0/-1</td>
+                            <td>关闭 socket 或管道端</td>
+                        </tr>
+                        <tr>
+                            <td>13.15</td>
+                            <td>pipe / unistd.h</td>
+                            <td>两元素 fd 数组输出 → 0/-1</td>
+                            <td>CGI 双向通信的两根管道</td>
+                        </tr>
+                        <tr>
+                            <td>13.16</td>
+                            <td>fork / unistd.h</td>
+                            <td>无参数 → 父得 PID，子得 0，失败 -1</td>
+                            <td>创建 CGI 子进程</td>
+                        </tr>
+                        <tr>
+                            <td>13.17</td>
+                            <td>dup2 / unistd.h</td>
+                            <td>源 fd,目标 fd → 目标 fd/-1</td>
+                            <td>设置 CGI stdin/stdout</td>
+                        </tr>
+                        <tr>
+                            <td>13.18</td>
+                            <td>chdir / unistd.h</td>
+                            <td>路径 → 0/-1</td>
+                            <td>CGI 工作目录</td>
+                        </tr>
+                        <tr>
+                            <td>13.19</td>
+                            <td>execve / unistd.h</td>
+                            <td>程序路径,argv,envp → 成功不返回，失败 -1</td>
+                            <td>执行解释器或 CGI 程序</td>
+                        </tr>
+                        <tr>
+                            <td>13.20</td>
+                            <td>_exit / unistd.h</td>
+                            <td>退出状态 → 不返回</td>
+                            <td>子进程启动失败终止</td>
+                        </tr>
+                        <tr>
+                            <td>13.21</td>
+                            <td>read / unistd.h</td>
+                            <td>fd,缓冲区,长度 → 字节数/0/-1</td>
+                            <td>读取 CGI 输出</td>
+                        </tr>
+                        <tr>
+                            <td>13.22</td>
+                            <td>write / unistd.h</td>
+                            <td>fd,数据,长度 → 字节数/-1</td>
+                            <td>向 CGI 输入正文</td>
+                        </tr>
+                        <tr>
+                            <td>13.23</td>
+                            <td>waitpid / sys/wait.h</td>
+                            <td>PID,status 输出,选项 → PID/0/-1</td>
+                            <td>观察并回收子进程</td>
+                        </tr>
+                        <tr>
+                            <td>13.24</td>
+                            <td>kill / signal.h</td>
+                            <td>PID,信号 → 0/-1</td>
+                            <td>终止 CGI</td>
+                        </tr>
+                        <tr>
+                            <td>13.25</td>
+                            <td>std::signal / csignal</td>
+                            <td>信号,处理方式 → 前处理器或 SIG_ERR</td>
+                            <td>SIGINT/SIGPIPE 策略；当前未检查返回值</td>
+                        </tr>
+                        <tr>
+                            <td>13.26</td>
+                            <td>std::time / ctime</td>
+                            <td>NULL 或结果指针 → 时间/-1</td>
+                            <td>无活动超时</td>
+                        </tr>
+                        <tr>
+                            <td>13.27</td>
+                            <td>stat / sys/stat.h</td>
+                            <td>路径,元数据输出 → 0/-1</td>
+                            <td>文件类型与存在性</td>
+                        </tr>
+                        <tr>
+                            <td>13.28</td>
+                            <td>opendir / dirent.h</td>
+                            <td>路径 → DIR* 或 NULL</td>
+                            <td>开始目录遍历</td>
+                        </tr>
+                        <tr>
+                            <td>13.29</td>
+                            <td>readdir / dirent.h</td>
+                            <td>DIR* → dirent* 或 NULL</td>
+                            <td>读取下一目录项；当前不区分结束与错误</td>
+                        </tr>
+                        <tr>
+                            <td>13.30</td>
+                            <td>closedir / dirent.h</td>
+                            <td>DIR* → 0/-1</td>
+                            <td>关闭目录流</td>
+                        </tr>
+                        <tr>
+                            <td>13.31</td>
+                            <td>std::remove / cstdio</td>
+                            <td>路径 → 0 或非零失败</td>
+                            <td>删除文件；与容器 erase 不同</td>
+                        </tr>
+                        <tr>
+                            <td>13.32</td>
+                            <td>std::strtol / cstdlib</td>
+                            <td>文本,endPtr 输出,进制 → long</td>
+                            <td>解析端口、状态码</td>
+                        </tr>
+                        <tr>
+                            <td>13.33</td>
+                            <td>std::memset / cstring</td>
+                            <td>地址,字节值,长度 → 原地址</td>
+                            <td>初始化 sockaddr / hints</td>
+                        </tr>
+                        <tr>
+                            <td>13.34</td>
+                            <td>std::strcpy / cstring</td>
+                            <td>目标,源 → 目标地址</td>
+                            <td>构建 envp 的 C 字符串</td>
+                        </tr>
+                        <tr>
+                            <td>13.35</td>
+                            <td>isspace / cctype</td>
+                            <td>字符整数 → 是否空白</td>
+                            <td>Tokenizer</td>
+                        </tr>
+                        <tr>
+                            <td>13.36</td>
+                            <td>std::isdigit / cctype</td>
+                            <td>字符整数 → 是否十进制数字</td>
+                            <td>Content-Length</td>
+                        </tr>
+                        <tr>
+                            <td>13.37</td>
+                            <td>std::isxdigit / cctype</td>
+                            <td>字符整数 → 是否十六进制数字</td>
+                            <td>URI 解码</td>
+                        </tr>
+                        <tr>
+                            <td>13.38</td>
+                            <td>std::tolower / cctype</td>
+                            <td>字符整数 → 小写字符整数</td>
+                            <td>请求头/配置辅助</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-15">
+                <h2>14. 系统结构体与宏速查</h2>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>名称</th>
+                            <th>要记住的内容</th>
+                        </tr>
+                        <tr>
+                            <td>14.01</td>
+                            <td>pollfd</td>
+                            <td>fd、events、revents；vector 连续存储可交给 poll。</td>
+                        </tr>
+                        <tr>
+                            <td>14.02</td>
+                            <td>addrinfo</td>
+                            <td>ai_family、ai_socktype、ai_flags 描述需求；ai_addr、ai_addrlen 是解析出的地址。本项目使用结果首项。</td>
+                        </tr>
+                        <tr>
+                            <td>14.03</td>
+                            <td>sockaddr / sockaddr_in</td>
+                            <td>前者是通用地址接口，后者是 IPv4 地址结构，sin_addr.s_addr 为 IP 数值。</td>
+                        </tr>
+                        <tr>
+                            <td>14.04</td>
+                            <td>struct stat</td>
+                            <td>st_mode 提供类型与权限位；使用 S_ISREG / S_ISDIR 检查。</td>
+                        </tr>
+                        <tr>
+                            <td>14.05</td>
+                            <td>DIR / dirent</td>
+                            <td>DIR* 表示目录流，readdir 返回 dirent*，d_name 是目录项名字。</td>
+                        </tr>
+                        <tr>
+                            <td>14.06</td>
+                            <td>AF_INET / SOCK_STREAM / AI_PASSIVE</td>
+                            <td>IPv4、流式 socket、被动绑定地址解析意图；不是函数。</td>
+                        </tr>
+                        <tr>
+                            <td>14.07</td>
+                            <td>SOL_SOCKET / SO_REUSEADDR / SOMAXCONN</td>
+                            <td>套接字选项层级、地址复用选项、监听排队参数常量。</td>
+                        </tr>
+                        <tr>
+                            <td>14.08</td>
+                            <td>F_GETFL / F_SETFL / O_NONBLOCK</td>
+                            <td>fcntl 命令和文件状态标志；O_NONBLOCK 与 FD_CLOEXEC 是不同概念，当前没有使用后者。</td>
+                        </tr>
+                        <tr>
+                            <td>14.09</td>
+                            <td>STDIN_FILENO / STDOUT_FILENO / STDERR_FILENO</td>
+                            <td>分别为 0、1、2；描述符不是 C++ 流对象本身。</td>
+                        </tr>
+                        <tr>
+                            <td>14.10</td>
+                            <td>WNOHANG / WIFEXITED / WEXITSTATUS</td>
+                            <td>等待选项与退出状态宏；不要把宏当用户自己定义的普通函数。</td>
+                        </tr>
+                        <tr>
+                            <td>14.11</td>
+                            <td>SIGINT / SIGPIPE / SIGKILL / SIG_IGN</td>
+                            <td>信号编号或处理方式常量；SIG_IGN 表示忽略。</td>
+                        </tr>
+                        <tr>
+                            <td>14.12</td>
+                            <td>DEBUG_LOG / WEBSERV_DEBUG</td>
+                            <td>项目日志宏和控制它的编译期定义；默认值 0。</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section class="unit" id="book3-16">
+                <h2>15. 最后用五条真实路径串联复习</h2>
+                <p>静态演示页面也涉及少量浏览器知识：</p>
+                <div class="table-scroll">
+                    <table>
+                        <tr>
+                            <th>编号</th>
+                            <th>知识点</th>
+                            <th>简洁解释与代码联系</th>
+                        </tr>
+                        <tr>
+                            <td>15.01</td>
+                            <td>HTML 文档结构</td>
+                            <td>doctype 声明文档类型；html 包含 head 和 body；title 是页面标题，h1/h2 是内容标题，p 是段落。</td>
+                        </tr>
+                        <tr>
+                            <td>15.02</td>
+                            <td>UTF-8 声明</td>
+                            <td>meta charset=UTF-8 指定 HTML 文本编码；网络正文仍按字节计数。</td>
+                        </tr>
+                        <tr>
+                            <td>15.03</td>
+                            <td>超链接</td>
+                            <td>a 的 href 指向 URL；autoindex 由服务器生成链接，点击后浏览器再发送 GET。</td>
+                        </tr>
+                        <tr>
+                            <td>15.04</td>
+                            <td>内联 SVG</td>
+                            <td>assets/gallery.html 直接使用 svg、rect、circle、path、text 画图；图形嵌在 HTML 中，不需要独立图片请求。</td>
+                        </tr>
+                        <tr>
+                            <td>15.05</td>
+                            <td>SVG 属性</td>
+                            <td>width/height 定尺寸，fill/stroke 定填充和描边；静态资源由浏览器渲染，C++ 只传字节。</td>
+                        </tr>
+                        <tr>
+                            <td>15.06</td>
+                            <td>可访问性</td>
+                            <td>gallery 的 role=img 和 aria-label 为图形提供语义和描述。</td>
+                        </tr>
+                        <tr>
+                            <td>15.07</td>
+                            <td>多资源请求</td>
+                            <td>浏览器访问页面可能再请求图片、样式或 favicon；一次打开网页不一定只对应一个 HTTP 请求。</td>
+                        </tr>
+                        <tr>
+                            <td>15.08</td>
+                            <td>静态与动态内容</td>
+                            <td>静态文件按原内容返回；autoindex 由 C++ 动态生成，Cookie/Session 页面由 CGI 动态生成。当前演示页面未包含 JavaScript 函数。
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <ol>
+                    <li>GET /：TCP → poll → recv → 状态机 → location / → 方法许可 → stat/ifstream → HTTP 序列化 → send →
+                        keep-alive。</li>
+                    <li>multipart 上传：长度分帧 → boundary → MultipartPart → 文件名校验 → upload_store → write/close 检查 → 201/200。
+                    </li>
+                    <li>CGI POST：body 完整 → 环境变量 → swap → pipe/fork/dup2/chdir/execve → poll 双向推进 → EOF + waitpid → 组装响应。
+                    </li>
+                    <li>infinite.py：子进程无 I/O 活动 → 5 秒检查 → SIGKILL + waitpid → 500 → 关闭连接。</li>
+                    <li>Session：Cookie 请求头 → HTTP_COOKIE → Python 校验 ID → 文件读取/增加次数 → Set-Cookie 或沿用 ID → CGI 响应发回。</li>
+                </ol>
+                <p>每条都能说明“数据在哪个对象、当前在哪个阶段、下一步由谁触发、出错谁清理”，比只背函数名更接近真正掌握项目。</p>
+            </section>
+        </article>
+        <footer>
+            <p>源码链接使用相对于 docs/review 的路径；复制完整项目后仍可定位。文档内行号对应生成时快照。</p>
+        </footer>
+    </main>
+    <script src="assets/js/app.js"></script>
+</body>
+
+</html>

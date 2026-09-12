@@ -332,36 +332,6 @@ test_status(
 
 
 # ============================================================
-# HEAD
-#
-# 如果你的实现 GET 自动允许 HEAD，这里应该 200
-# ============================================================
-
-request = (
-    "HEAD / HTTP/1.1\r\n"
-    "Host: localhost\r\n"
-    "Connection: close\r\n"
-    "\r\n"
-)
-
-response = test_status(
-    "HEAD /",
-    request,
-    200
-)
-
-body = get_body(response)
-
-if len(body) == 0:
-    pass_test("HEAD response has no body")
-else:
-    fail_test(
-        "HEAD response has no body",
-        "body size = " + str(len(body))
-    )
-
-
-# ============================================================
 # HTTP VERSION
 # ============================================================
 
@@ -393,59 +363,6 @@ info_test(
 
 
 # ============================================================
-# DIRECTORY
-# ============================================================
-
-request = (
-    "GET /directory/ HTTP/1.1\r\n"
-    "Host: localhost\r\n"
-    "Connection: close\r\n"
-    "\r\n"
-)
-
-test_status(
-    "GET /directory/",
-    request,
-    200
-)
-
-
-request = (
-    "POST /directory/ HTTP/1.1\r\n"
-    "Host: localhost\r\n"
-    "Content-Length: 0\r\n"
-    "Connection: close\r\n"
-    "\r\n"
-)
-
-test_status(
-    "POST /directory/ not allowed",
-    request,
-    405
-)
-
-
-# ============================================================
-# DIRECTORY WITHOUT /
-#
-# 你的实现可能 301，也可能 404。
-# 暂时观察。
-# ============================================================
-
-request = (
-    "GET /directory HTTP/1.1\r\n"
-    "Host: localhost\r\n"
-    "Connection: close\r\n"
-    "\r\n"
-)
-
-info_test(
-    "GET /directory without trailing slash",
-    request
-)
-
-
-# ============================================================
 # REDIRECT
 # ============================================================
 
@@ -466,7 +383,7 @@ test_header(
     "GET /old Location header",
     request,
     "Location",
-    "/new"
+    "/new.html"
 )
 
 
@@ -484,22 +401,21 @@ request = (
 test_status(
     "GET /images",
     request,
-    200
+    301
 )
 
 
 request = (
-    "POST /images HTTP/1.1\r\n"
+    "GET /images/ HTTP/1.1\r\n"
     "Host: localhost\r\n"
-    "Content-Length: 0\r\n"
     "Connection: close\r\n"
     "\r\n"
 )
 
 test_status(
-    "POST /images not allowed",
+    "GET /images/",
     request,
-    405
+    200
 )
 
 

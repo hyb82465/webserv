@@ -301,26 +301,54 @@ The supplied school tester can be run while the server is active:
 Additional black-box and regression tests are available under `my_testers/`:
 
 ```bash
-bash my_testers/test_webserv.sh
-python3 my_testers/test_keepalive.py
-python3 my_testers/test_pipelining.py
-python3 my_testers/test_partial_request.py
-python3 my_testers/no_cgi_tester.py
+python3 my_testers/webserv_tester.py
+python3 my_testers/client_timeout.py
+python3 my_testers/cgi_stress.py
 ```
 
-`my_testers/cgi_stress.py` is intentionally resource intensive: it runs
-concurrent 100,000,000-byte CGI requests. Only run it in an environment with
-enough memory and swap space.
+Run the tests from the repository root while the server is running with
+`config/default.conf`. `webserv_tester.py` checks HTTP parsing, configured
+routes, body-size limits, uploads, downloads, redirects, multiple listeners,
+keep-alive, CGI behavior, and the Cookie and Session examples.
+
+`client_timeout.py` takes approximately 35 seconds because it verifies that an
+inactive connection is closed without making the server unavailable.
+
+`cgi_stress.py` is intentionally resource intensive: by default it runs 20
+workers, each sending five 100,000,000-byte CGI requests. Only run the default
+test in an environment with enough memory and swap space. A smaller run is:
+
+```bash
+python3 my_testers/cgi_stress.py \
+    --workers 2 \
+    --rounds 2 \
+    --body-size 1000000 \
+    --timeout 30
+```
 
 Before submission, perform a clean build and full regression run:
 
 ```bash
 make fclean
 make
+make
 ./webserv config/default.conf
 ```
 
-Then run the school tester and relevant manual tests from another terminal.
+The second `make` should report that there is nothing to rebuild. Then run the
+school tester and the three custom testers from another terminal.
+
+Some evaluation checks are intentionally manual: inspect the single `poll()`
+event loop and every `read`/`recv`/`write`/`send` result, try conflicting listen
+addresses with two server processes, modify a custom error page, inspect the
+site and HTTP headers in a browser, and run a bounded Siege test such as:
+
+```bash
+siege -b -c 20 -r 50 http://127.0.0.1:8080/
+```
+
+The reported availability should remain above 99.5%, connections should not
+hang, and the server's memory usage should not grow indefinitely.
 
 ## Technical choices and limitations
 

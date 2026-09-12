@@ -234,7 +234,7 @@ Static page:
 curl -i http://127.0.0.1:8080/
 ```
 
-Directory listing:
+Static gallery route:
 
 ```bash
 curl -i http://127.0.0.1:8080/images/
@@ -340,15 +340,29 @@ school tester and the three custom testers from another terminal.
 
 Some evaluation checks are intentionally manual: inspect the single `poll()`
 event loop and every `read`/`recv`/`write`/`send` result, try conflicting listen
-addresses with two server processes, modify a custom error page, inspect the
-site and HTTP headers in a browser, and run a bounded Siege test such as:
+addresses with two server processes, modify a custom error page, and inspect
+the site and HTTP headers in a browser.
+
+### Siege stress test
+
+With the server running, send 1,000 GET requests to an empty static page:
 
 ```bash
-siege -b -c 20 -r 50 http://127.0.0.1:8080/
+siege -b -c 20 -r 50 http://127.0.0.1:8080/directory/
 ```
 
-The reported availability should remain above 99.5%, connections should not
-hang, and the server's memory usage should not grow indefinitely.
+In another terminal, watch the server's physical memory usage:
+
+```bash
+WEBSERV_PID=$(pgrep -n -x webserv)
+watch -n 1 "ps -o pid=,rss=,etime=,cmd= -p $WEBSERV_PID"
+```
+
+Check that `Availability` is above 99.5% and `Failed transactions` is zero.
+The `RSS` column shows physical memory in KiB. It may rise during the test, but
+after repeated identical tests it should stabilize instead of growing without
+limit. When using Docker, `docker stats <container-id>` can also be used to
+watch the total container memory.
 
 ## Technical choices and limitations
 

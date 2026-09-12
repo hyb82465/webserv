@@ -344,8 +344,6 @@ void Server::acceptClient(int listenFd)
     struct sockaddr_in clientAddr = {};
     socklen_t clientAddrLen = sizeof(clientAddr);
 
-    
-
     int clientFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientAddrLen);
     if (clientFd == -1)
     {
@@ -691,6 +689,7 @@ void Server::removeCgi(CgiHandler *cgi)
         }
     }
 }
+
 void Server::finishCgi(CgiHandler *cgi)
 {
     if (cgi == NULL)

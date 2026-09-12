@@ -180,10 +180,16 @@ std::string RequestHandler::getMimeType(const std::string &path)
         return "image/jpeg";
     if (ext == "gif")
         return "image/gif";
+    if (ext == "svg")
+        return "image/svg+xml";
     if (ext == "json")
         return "application/json";
     if (ext == "pdf")
         return "application/pdf";
+    if (ext == "c" || ext == "cc" || ext == "cpp" || ext == "cxx"
+        || ext == "h" || ext == "hpp" || ext == "py" || ext == "sh"
+        || ext == "conf" || ext == "md")
+        return "text/plain; charset=utf-8";
     return "application/octet-stream";
 }
 

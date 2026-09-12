@@ -306,11 +306,17 @@ python3 my_testers/client_timeout.py
 python3 my_testers/cgi_stress.py
 ```
 
-Run them from the repository root while the server is using
-`config/default.conf`. `client_timeout.py` takes approximately 35 seconds.
-`cgi_stress.py` is intentionally resource intensive: its default workload is
-20 workers, five rounds per worker, and a 100,000,000-byte request per round.
-A smaller check can be run with:
+Run the tests from the repository root while the server is running with
+`config/default.conf`. `webserv_tester.py` checks HTTP parsing, configured
+routes, body-size limits, uploads, downloads, redirects, multiple listeners,
+keep-alive, CGI behavior, and the Cookie and Session examples.
+
+`client_timeout.py` takes approximately 35 seconds because it verifies that an
+inactive connection is closed without making the server unavailable.
+
+`cgi_stress.py` is intentionally resource intensive: by default it runs 20
+workers, each sending five 100,000,000-byte CGI requests. Only run the default
+test in an environment with enough memory and swap space. A smaller run is:
 
 ```bash
 python3 my_testers/cgi_stress.py \
@@ -319,27 +325,6 @@ python3 my_testers/cgi_stress.py \
     --body-size 1000000 \
     --timeout 30
 ```
-
-### Siege stress test
-
-With the server running, send 1,000 GET requests to the empty static page:
-
-```bash
-siege -b -c 20 -r 50 http://127.0.0.1:8080/directory/
-```
-
-In another terminal, watch the server's physical memory usage:
-
-```bash
-WEBSERV_PID=$(pgrep -n -x webserv)
-watch -n 1 "ps -o pid=,rss=,etime=,cmd= -p $WEBSERV_PID"
-```
-
-Check that `Availability` is above 99.5% and `Failed transactions` is zero.
-The `RSS` column is physical memory in KiB. It may rise during the test, but
-after repeated identical tests it should stabilize instead of growing without
-limit. When using Docker, `docker stats <container-id>` can also show the total
-container memory.
 
 Before submission, perform a clean build and full regression run:
 
@@ -351,8 +336,19 @@ make
 ```
 
 The second `make` should report that there is nothing to rebuild. Then run the
-school tester, the three custom testers, the bounded Siege test, and the
-relevant browser and configuration checks from another terminal.
+school tester and the three custom testers from another terminal.
+
+Some evaluation checks are intentionally manual: inspect the single `poll()`
+event loop and every `read`/`recv`/`write`/`send` result, try conflicting listen
+addresses with two server processes, modify a custom error page, inspect the
+site and HTTP headers in a browser, and run a bounded Siege test such as:
+
+```bash
+siege -b -c 20 -r 50 http://127.0.0.1:8080/
+```
+
+The reported availability should remain above 99.5%, connections should not
+hang, and the server's memory usage should not grow indefinitely.
 
 ## Technical choices and limitations
 

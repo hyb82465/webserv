@@ -340,7 +340,10 @@ char **CgiHandler::creatEnvp() const
     {
         envp[i] = new char[_environment[i].size() + 1];
 
-        std::strcpy(envp[i], _environment[i].c_str());
+        for (std::size_t j = 0; j < _environment[i].size(); ++j)
+            envp[i][j] = _environment[i][j];
+
+        envp[i][_environment[i].size()] = '\0';
     }
     envp[_environment.size()] = NULL;
 

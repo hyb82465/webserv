@@ -106,9 +106,9 @@ int Server::setupListenSocket(const ListenConfig &listenConfig)
                 const struct sockaddr *address,
                 socklen_t addressLength);
     */
-    struct addrinfo hints;
+    struct addrinfo hints = {};
     struct addrinfo *result = NULL;
-    std::memset(&hints, 0, sizeof(hints));
+    
     hints.ai_family = AF_INET;       // IPv4
     hints.ai_socktype = SOCK_STREAM; // TCP
     hints.ai_flags = AI_PASSIVE;     // server bind() address
@@ -341,10 +341,10 @@ void Server::acceptClient(int listenFd)
     //     &clientAddrLen
     // );
     // int clientFd = accept(listenFd, NULL, NULL);
-    struct sockaddr_in clientAddr;
+    struct sockaddr_in clientAddr = {};
     socklen_t clientAddrLen = sizeof(clientAddr);
 
-    std::memset(&clientAddr, 0, sizeof(clientAddr));
+    
 
     int clientFd = accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientAddrLen);
     if (clientFd == -1)
@@ -386,10 +386,10 @@ void Server::acceptClient(int listenFd)
     std::size_t serverIndex = serverIt->second;
     int serverPort = portIt->second;
 
-    struct sockaddr_in serverAddr;
+    struct sockaddr_in serverAddr = {};
     socklen_t serverAddrLen = sizeof(serverAddr);
 
-    std::memset(&serverAddr, 0, sizeof(serverAddr));
+    
 
     if (getsockname(listenFd, reinterpret_cast<struct sockaddr *>(&serverAddr), &serverAddrLen) == -1)
     {

@@ -19,9 +19,8 @@ std::string Utils::toLower(const std::string &str)
     std::string result = str;
     for (std::size_t i = 0; i < result.size(); ++i)
     {
-        result[i] = static_cast<char>(
-            std::tolower(
-                static_cast<unsigned char>(result[i])));
+        if (result[i] >= 'A' && result[i] <= 'Z')
+            result[i] = static_cast<char>(result[i] - 'A' + 'a');
     }
     return result;
 }
@@ -45,17 +44,30 @@ bool Utils::decodeUri(std::string &path)
         }
         if (i + 2 >= path.size())
             return false;
-        if (!std::isxdigit(static_cast<unsigned char>(path[i + 1])) || !std::isxdigit(static_cast<unsigned char>(path[i + 2])))
-            return false;
-        std::string hex = path.substr(i + 1, 2);
-        unsigned int value;
-        std::stringstream ss(hex);
-        if (!(ss >> std::hex >> value))
-            return false;
-        if (value == 0)
-            return false;
-        decoded += static_cast<char>(value);
-        i += 2;
+
+    char c1 = path[i + 1];
+    char c2 = path[i + 2];
+
+    bool hex1 = (c1 >= '0' && c1 <= '9') ||
+                (c1 >= 'a' && c1 <= 'f') ||
+                (c1 >= 'A' && c1 <= 'F');
+
+    bool hex2 = (c2 >= '0' && c2 <= '9') ||
+                (c2 >= 'a' && c2 <= 'f') ||
+                (c2 >= 'A' && c2 <= 'F');
+
+    if (!hex1 || !hex2)
+        return false;
+
+    std::string hex = path.substr(i + 1, 2);
+    unsigned int value;
+    std::stringstream ss(hex);
+    if (!(ss >> std::hex >> value))
+        return false;
+    if (value == 0)
+        return false;
+    decoded += static_cast<char>(value);
+    i += 2;
     }
     path = decoded;
     return true;

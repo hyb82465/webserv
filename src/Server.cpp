@@ -1009,7 +1009,8 @@ void Server::run()
             continue;
         for (std::size_t i = 0; i < _pollFds.size();)
         {
-            if (_pollFds[i].revents == 0)
+            short revents = _pollFds[i].revents;
+            if (revents == 0)
             {
                 ++i;
                 continue;
@@ -1018,7 +1019,6 @@ void Server::run()
             // CGI： check whether it is CGI pipe or client socket
             if (_cgiFds.find(fd) != _cgiFds.end())
             {
-                short revents = _pollFds[i].revents;
                 if (revents & (POLLERR | POLLNVAL))
                 {
                     handleCgiError(fd);
@@ -1043,25 +1043,39 @@ void Server::run()
                 continue;
             }
             // Listen Socket
-            if (isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
-                throw std::runtime_error("listen socket error");
-            if (!isListenFd(fd) && _pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            if (isListenFd(fd))
             {
-                std::cerr << "client connection closed or invalid" << std::endl;
+                if (revents & (POLLERR | POLLHUP | POLLNVAL))
+                    throw std::runtime_error("listen socket error");
+                if (revents & POLLIN)
+                    acceptClient(fd);
+                ++i;
+                continue;
+            }
+            // Normal client socket
+            if (revents & (POLLERR | POLLNVAL))
+            {
+                std::cerr << "client socket error or invalid fd" << std::endl;
                 removeClient(fd, i);
                 continue;
             }
-            if (isListenFd(fd) && (_pollFds[i].revents & POLLIN))
+            if (revents & POLLIN)
             {
-                acceptClient(fd);
-                ++i;
-            }
-            else if (_pollFds[i].revents & POLLIN)
                 handleRead(fd, i);
-            else if (_pollFds[i].revents & POLLOUT)
+                continue;
+            }
+            if (revents & POLLOUT)
+            {
                 handleWrite(fd, i);
-            else
-                ++i;
+                continue;
+            }
+            if (revents & POLLHUP)
+            {
+                DEBUG_LOG("client connection hung up");
+                removeClient(fd, i);
+                continue;
+            }
+            ++i;
         }
     }
 }

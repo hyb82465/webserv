@@ -20,7 +20,7 @@ struct MultipartPart
 class RequestHandler
 {
 private:
-    const ServerConfig &_server;
+    const ServerConfig &_serverConfig;
 
     // forbidden
     RequestHandler();

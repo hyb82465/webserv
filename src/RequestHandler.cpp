@@ -9,7 +9,7 @@
 #include <dirent.h>
 #include <iostream>
 
-RequestHandler::RequestHandler(const ServerConfig &config) : _server(config)
+RequestHandler::RequestHandler(const ServerConfig &config) : _serverConfig(config)
 {
 }
 
@@ -107,7 +107,7 @@ HttpResponse RequestHandler::errorResponse(
 {
     HttpResponse response;
     const std::map<int, std::string> &errorPages =
-        _server.getErrorPages();
+        _serverConfig.getErrorPages();
     std::map<int, std::string>::const_iterator it =
         errorPages.find(static_cast<int>(status));
     if (it != errorPages.end())
@@ -430,14 +430,14 @@ std::string RequestHandler::getRoot(const LocationConfig *location) const
 {
     if (location != NULL)
         return location->getRoot();
-    return _server.getRoot();
+    return _serverConfig.getRoot();
 }
 
 std::string RequestHandler::getIndex(const LocationConfig *location) const
 {
     if (location != NULL)
         return location->getIndex();
-    return _server.getIndex();
+    return _serverConfig.getIndex();
 }
 
 bool RequestHandler::getAutoindex(const LocationConfig *location) const
@@ -715,7 +715,7 @@ HttpResponse RequestHandler::handleDelete(const HttpRequest &request, const Loca
 const LocationConfig *RequestHandler::getLocation(
     const HttpRequest &request) const
 {
-    return findLocation(_server, request.getPath());
+    return findLocation(_serverConfig, request.getPath());
 }
 
 std::string RequestHandler::buildPath(const LocationConfig *location, const std::string &requestPath)
@@ -724,7 +724,7 @@ std::string RequestHandler::buildPath(const LocationConfig *location, const std:
     std::string relativePath;
     if (location == NULL)
     {
-        root = _server.getRoot();
+        root = _serverConfig.getRoot();
         relativePath = requestPath;
     }
     else
@@ -788,7 +788,7 @@ bool RequestHandler::preCheck(
 
 HttpResponse RequestHandler::handleResolved(const HttpRequest &request)
 {
-    const LocationConfig *location = findLocation(_server, request.getPath());
+    const LocationConfig *location = findLocation(_serverConfig, request.getPath());
 
     const std::string &requestMethod = request.getMethod();
     if (requestMethod == "GET")

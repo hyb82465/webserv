@@ -24,9 +24,9 @@
 #include <netinet/in.h>
 
 Server::Server(const std::vector<ServerConfig> &configs)
-    : _configs(configs)
+    : _serverConfigs(configs)
 {
-    if (_configs.empty())
+    if (_serverConfigs.empty())
         throw std::runtime_error("No server configuration");
 }
 
@@ -273,13 +273,13 @@ void Server::processRequest(int fd, std::size_t &i)
         return;
     }
     std::size_t serverIndex = it->second.getServerIndex();
-    if (serverIndex >= _configs.size())
+    if (serverIndex >= _serverConfigs.size())
     {
         std::cerr << "invalid server index" << std::endl;
         removeClient(fd, i);
         return;
     }
-    const ServerConfig &config = _configs[serverIndex];
+    const ServerConfig &config = _serverConfigs[serverIndex];
     RequestState &state = it->second.getRequestState();
     HttpRequest &request = state.request;
     RequestHandler handler(config);
@@ -712,7 +712,7 @@ void Server::finishCgi(CgiHandler *cgi)
     else
     {
         state.keepAlive = false;
-        RequestHandler handler(_configs[clientIt->second.getServerIndex()]);
+        RequestHandler handler(_serverConfigs[clientIt->second.getServerIndex()]);
         HttpResponse error = handler.handleError(HTTP_INTERNAL_SERVER_ERROR);
         error.setHeader("Connection", "close");
         response = error.getResponse();
@@ -952,9 +952,9 @@ void Server::checkClientTimeouts()
 void Server::run()
 {
     std::map<std::string, bool> usedListen;
-    for (std::size_t i = 0; i < _configs.size(); ++i)
+    for (std::size_t i = 0; i < _serverConfigs.size(); ++i)
     {
-        const std::vector<ListenConfig>& listens = _configs[i].getListens();
+        const std::vector<ListenConfig>& listens = _serverConfigs[i].getListens();
         for (std::size_t j = 0; j < listens.size(); ++j)
         {
             std::stringstream key;
@@ -967,10 +967,10 @@ void Server::run()
             usedListen[key.str()] = true;
         }
     }
-    for (std::size_t i = 0; i < _configs.size(); ++i)
+    for (std::size_t i = 0; i < _serverConfigs.size(); ++i)
     {
         const std::vector<ListenConfig> &listens =
-            _configs[i].getListens();
+            _serverConfigs[i].getListens();
         for (std::size_t j = 0; j < listens.size(); ++j)
         {
             std::cout << "server " << i

@@ -24,7 +24,7 @@ private:
     std::map<int, CgiHandler*> _cgiFds;
     std::vector<CgiHandler*> _cgiHandlers;
 
-    std::vector<ServerConfig> _configs;
+    std::vector<ServerConfig> _serverConfigs;
 
     Server();
     Server(const Server& other);
@@ -80,7 +80,7 @@ private:
     void checkClientTimeouts();
 
 public:
-    Server(const std::vector<ServerConfig>& _configs);
+    Server(const std::vector<ServerConfig>& _serverConfigs);
     ~Server();
 
     void run();

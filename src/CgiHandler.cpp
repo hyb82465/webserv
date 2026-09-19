@@ -57,7 +57,7 @@ CgiHandler::~CgiHandler()
     closeOutput();
 }
 
-void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
+void CgiHandler::start(HttpRequest &request, const std::vector<int> &listenFds)
 {
     int inputPipe[2];
     int outputPipe[2];
@@ -106,15 +106,15 @@ void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
             _exit(1);
         close(inputPipe[0]);
         close(outputPipe[1]);
-        for (std::size_t i = 0; i < serverFds.size(); ++i)
+        for (std::size_t i = 0; i < listenFds.size(); ++i)
         {
-            if (serverFds[i] > STDERR_FILENO)
-                close(serverFds[i]);
+            if (listenFds[i] > STDERR_FILENO)
+                close(listenFds[i]);
         }
         std::string directory = getDirectory(_scriptPath);
         if (chdir(directory.c_str()) == -1)
             _exit(1);
-        char **envp = creatEnvp();
+        char **envp = createEnvp();
         char *argv[3]; // CGI run arguments
         argv[0] = const_cast<char *>(_executable.c_str());
         std::string fileName = getFileName(_scriptPath);
@@ -333,7 +333,7 @@ void CgiHandler::buildEnvironment(const HttpRequest &request)
     }
 }
 
-char **CgiHandler::creatEnvp() const
+char **CgiHandler::createEnvp() const
 {
     char **envp = new char *[_environment.size() + 1];
     for (std::size_t i = 0; i < _environment.size(); ++i)

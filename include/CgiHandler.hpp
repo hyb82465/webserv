@@ -37,7 +37,7 @@ private:
 
     void setNonBlocking(int fd);
     void buildEnvironment(const HttpRequest &request);
-    char **creatEnvp() const;
+    char **createEnvp() const;
     void freeEnvp(char **envp) const;
 
     std::string getDirectory(const std::string &path) const;
@@ -52,7 +52,7 @@ public:
                const std::string &serverName);
     ~CgiHandler();
 
-    void start(HttpRequest &request, const std::vector<int> &serverFds);
+    void start(HttpRequest &request, const std::vector<int> &listenFds);
     bool writeBody();
     bool readOutput();
     void closeInput();

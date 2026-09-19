@@ -429,14 +429,14 @@ void Server::handleRead(int fd, std::size_t &i)
                     size_t length,
                     int flags); */
     char buffer[4096];
-    ssize_t byteRead = recv(fd, buffer, sizeof(buffer), 0);
-    if (byteRead == -1)
+    ssize_t bytesRead = recv(fd, buffer, sizeof(buffer), 0);
+    if (bytesRead == -1)
     {
         std::cerr << "recv failed" << std::endl;
         removeClient(fd, i);
         return;
     }
-    else if (byteRead == 0)
+    else if (bytesRead == 0)
     {
         DEBUG_LOG("client disconnected");
         removeClient(fd, i);
@@ -449,7 +449,7 @@ void Server::handleRead(int fd, std::size_t &i)
         removeClient(fd, i);
         return;
     }
-    it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(byteRead));
+    it->second.appendToReadBuffer(buffer, static_cast<std::size_t>(bytesRead));
     processRequest(fd, i);
 }
 
@@ -536,15 +536,15 @@ void Server::startCgi(int clientFd,
         serverPort,
         remoteAddr,
         serverName);
-    std::vector<int> serverFds;
+    std::vector<int> listenFds;
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd >= 0)
-            serverFds.push_back(_pollFds[i].fd);
+            listenFds.push_back(_pollFds[i].fd);
     }
     try
     {
-        cgi->start(request, serverFds);
+        cgi->start(request, listenFds);
     }
     catch (...)
     {

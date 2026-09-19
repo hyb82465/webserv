@@ -186,10 +186,8 @@ std::string RequestHandler::getMimeType(const std::string &path)
         return "application/json";
     if (ext == "pdf")
         return "application/pdf";
-    if (ext == "c" || ext == "cc" || ext == "cpp" || ext == "cxx"
-        || ext == "h" || ext == "hpp" || ext == "py" || ext == "sh"
-        || ext == "conf" || ext == "md")
-        return "text/plain; charset=utf-8";
+    if (ext == "ico")
+        return "image/x-icon";
     return "application/octet-stream";
 }
 

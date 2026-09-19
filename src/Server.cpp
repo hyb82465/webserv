@@ -1016,7 +1016,7 @@ void Server::run()
                 continue;
             }
             int fd = _pollFds[i].fd;
-            // CGI： check whether it is CGI pipe or client socket
+            // CGI: check whether it is CGI pipe or client socket
             if (_cgiFds.find(fd) != _cgiFds.end())
             {
                 if (revents & (POLLERR | POLLNVAL))

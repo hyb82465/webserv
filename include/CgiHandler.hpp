@@ -24,7 +24,7 @@ private:
     std::string _remoteAddr;
     std::string _serverName;  
     std::string _requestBody;
-    std::size_t _bodyOffset; // how many bytes wroten in CGI
+    std::size_t _bodyOffset; // number of bytes written to CGI
     std::string _output;
     std::vector<std::string> _environment;
     int _exitStatus;

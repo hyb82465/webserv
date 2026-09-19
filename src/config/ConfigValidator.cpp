@@ -9,7 +9,7 @@ ConfigValidator::~ConfigValidator() {}
 void ConfigValidator::validate(const std::vector<ServerConfig> &servers) const
 {
     if (servers.empty())
-        throw std::runtime_error("Configuration mest contain at least one server");
+        throw std::runtime_error("Configuration must contain at least one server");
 
     for (size_t i = 0; i < servers.size(); ++i)
         validateServer(servers[i]);
@@ -29,7 +29,7 @@ void ConfigValidator::validateListens(const ServerConfig &server) const
     const std::vector<ListenConfig> &listens = server.getListens();
 
     if (listens.empty())
-        throw std::runtime_error("server mest contain at least one listen");
+        throw std::runtime_error("server must contain at least one listen");
     for (size_t i = 0; i < listens.size(); ++i)
     {
         const ListenConfig &listen = listens[i];
@@ -118,7 +118,7 @@ void ConfigValidator::validateMethods(const LocationConfig &location) const
     for (size_t i = 0; i < methods.size(); ++i)
     {
         if (!isValidMethod(methods[i]))
-            throw std::runtime_error("Invalide HTTP method");
+            throw std::runtime_error("Invalid HTTP method");
         for (size_t j = i + 1; j < methods.size(); ++j)
         {
             if (methods[i] == methods[j])
@@ -136,11 +136,11 @@ void ConfigValidator::validateRedirect(const LocationConfig &location) const
     if (code == 0)
     {
         if (!url.empty())
-            throw std::runtime_error("Redirect URL existd without redirect code");
+            throw std::runtime_error("Redirect URL exists without redirect code");
         return;
     }
     if (code < 300 || code > 399)
-        throw std::runtime_error("Invalide redirect status code");
+        throw std::runtime_error("Invalid redirect status code");
     if (url.empty())
         throw std::runtime_error("Redirect URL cannot be empty");
 }

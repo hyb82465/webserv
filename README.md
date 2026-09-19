@@ -119,6 +119,9 @@ make re          # rebuild everything
 make DEBUG=1     # enable debug logging
 ```
 
+If the project was already built with debug logging disabled, use
+`make re DEBUG=1` to force a rebuild.
+
 ### Execution
 
 The program requires one configuration-file argument:

@@ -536,15 +536,15 @@ void Server::startCgi(int clientFd,
         serverPort,
         remoteAddr,
         serverName);
-    std::vector<int> listenFds;
+    std::vector<int> serverFds;
     for (std::size_t i = 0; i < _pollFds.size(); ++i)
     {
         if (_pollFds[i].fd >= 0)
-            listenFds.push_back(_pollFds[i].fd);
+            serverFds.push_back(_pollFds[i].fd);
     }
     try
     {
-        cgi->start(request, listenFds);
+        cgi->start(request, serverFds);
     }
     catch (...)
     {

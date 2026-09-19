@@ -516,8 +516,8 @@ def run_tests():
     )
 
     listeners = [
-        ("127.0.0.1", 8080, b"Home page of website 8080"),
-        ("127.0.0.1", 8081, b"Home page of website 8080"),
+        ("127.0.0.1", 8080, b"Hello Webserv"),
+        ("127.0.0.1", 8081, b"Hello Webserv"),
         ("127.0.0.2", 8080, b"THIS IS SERVER 8080"),
         ("127.0.0.3", 8081, b"THIS IS SERVER 8081"),
     ]

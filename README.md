@@ -243,13 +243,13 @@ curl -i http://127.0.0.1:8080/images/
 Multipart upload:
 
 ```bash
-curl -i -F "file=@small.txt" http://127.0.0.1:8080/upload
+curl -i -F "file=@www/test.txt" http://127.0.0.1:8080/upload
 ```
 
 Retrieve an uploaded file:
 
 ```bash
-curl -i http://127.0.0.1:8080/uploads/small.txt
+curl -i http://127.0.0.1:8080/uploads/test.txt
 ```
 
 Delete a resource allowed by the `/delete` location:

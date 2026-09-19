@@ -57,7 +57,7 @@ CgiHandler::~CgiHandler()
     closeOutput();
 }
 
-void CgiHandler::start(HttpRequest &request, const std::vector<int> &listenFds)
+void CgiHandler::start(HttpRequest &request, const std::vector<int> &serverFds)
 {
     int inputPipe[2];
     int outputPipe[2];
@@ -106,10 +106,10 @@ void CgiHandler::start(HttpRequest &request, const std::vector<int> &listenFds)
             _exit(1);
         close(inputPipe[0]);
         close(outputPipe[1]);
-        for (std::size_t i = 0; i < listenFds.size(); ++i)
+        for (std::size_t i = 0; i < serverFds.size(); ++i)
         {
-            if (listenFds[i] > STDERR_FILENO)
-                close(listenFds[i]);
+            if (serverFds[i] > STDERR_FILENO)
+                close(serverFds[i]);
         }
         std::string directory = getDirectory(_scriptPath);
         if (chdir(directory.c_str()) == -1)
